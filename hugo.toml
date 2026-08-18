@@ -1,4 +1,4 @@
-﻿baseURL = "https://xingvec.github.io/"
+baseURL = "https://xingvec.github.io/"
 languageCode = "zh-cn"
 title = "Xingvec's Blog"
 theme = "stack"
@@ -16,7 +16,7 @@ theme = "stack"
     [params.sidebar.avatar]
       enabled = true
       local = true
-      src = "img/xingvectx.png"
+      src = "img/avatar.png"
 
   [params.article]
     [params.article.readingTime]
