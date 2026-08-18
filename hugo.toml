@@ -12,11 +12,7 @@ theme = "stack"
 
   [params.sidebar]
     subtitle = "欢迎来到我的博客"
-
-    [params.sidebar.avatar]
-      enabled = true
-      local = true
-      src = "img/avatar.png"
+    avatar = false
 
   [params.article]
     [params.article.readingTime]
