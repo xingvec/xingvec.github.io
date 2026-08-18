@@ -26,11 +26,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: recursive
 
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: latest
+          extended: true
 
       - name: Setup Pages
         id: pages
@@ -38,8 +40,8 @@ jobs:
 
       - name: Install theme
         run: |
-          git submodule add https://github.com/adityatelange/hugo-PaperMod themes/PaperMod 2>/dev/null || true
-          echo "theme = 'PaperMod'" >> hugo.toml
+          git clone --depth=1 https://github.com/adityatelange/hugo-PaperMod themes/PaperMod
+          rm -rf themes/PaperMod/.git
 
       - name: Build with Hugo
         env:
