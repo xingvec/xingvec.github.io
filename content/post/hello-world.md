@@ -39,4 +39,4 @@ def hello():
 
 ---
 
-博客搭建成功！以后写新文章只需要在 `content/posts/` 下新建 `.md` 文件，然后 push 就行。
+博客搭建成功！以后写新文章只需要在 `content/post/` 下新建 `.md` 文件，然后 push 就行。

@@ -4,23 +4,17 @@ title = "Xingvec's Blog"
 theme = "stack"
 
 [params]
-  mainSection = "posts"
-  articleSection = ["posts"]
-  toc = true
-  tocOpen = false
-  readingTime = true
+  mainSections = ["post"]
+  rssFullContent = true
+  favicon = "img/avatar.png"
 
   [params.sidebar]
     subtitle = "欢迎来到我的博客"
-
-    [params.sidebar.avatar]
-      enabled = true
-      local = true
-      src = "img/avatar.png"
+    avatar = "img/avatar.png"
 
   [params.article]
-    [params.article.readingTime]
-      enable = true
+    toc = true
+    readingTime = true
 
   [params.colorScheme]
     toggle = true
@@ -35,8 +29,12 @@ theme = "stack"
         limit = 5
     [[params.widgets.homepage]]
       type = "categories"
+      [params.widgets.homepage.params]
+        limit = 10
     [[params.widgets.homepage]]
       type = "tag-cloud"
+      [params.widgets.homepage.params]
+        limit = 10
 
 [[menu.main]]
   name = "首页"
@@ -45,7 +43,7 @@ theme = "stack"
 
 [[menu.main]]
   name = "文章"
-  url = "/posts/"
+  url = "/post/"
   weight = 2
 
 [[menu.main]]
