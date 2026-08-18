@@ -40,8 +40,8 @@ jobs:
 
       - name: Install theme
         run: |
-          git clone --depth=1 https://github.com/adityatelange/hugo-PaperMod themes/PaperMod
-          rm -rf themes/PaperMod/.git
+          git clone --depth=1 https://github.com/CaiJimmy/hugo-theme-stack themes/stack
+          rm -rf themes/stack/.git
 
       - name: Build with Hugo
         env:

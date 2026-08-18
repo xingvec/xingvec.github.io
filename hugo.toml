@@ -1,34 +1,38 @@
 baseURL = "https://xingvec.github.io/"
 languageCode = "zh-cn"
 title = "Xingvec's Blog"
-theme = "PaperMod"
+theme = "stack"
 
 [params]
-  description = "个人博客"
-  author = "xingvec"
-  ShowReadingTime = true
-  ShowShareButtons = false
-  ShowPostNavLinks = true
-  ShowBreadCrumbs = true
-  ShowCodeCopyButtons = true
-  ShowWordCount = true
-  ShowToc = true
-  TocOpen = false
+  mainSection = "posts"
+  articleSection = ["posts"]
+  toc = true
+  tocOpen = false
+  readingTime = true
 
-  [params.homeInfoParams]
-    Title = "Xingvec's Blog"
-    Content = "欢迎来到我的博客"
+  [params.sidebar]
+    subtitle = "欢迎来到我的博客"
+    avatar = false
 
-  [[params.socialIcons]]
-    name = "github"
-    url = "https://github.com/xingvec"
+  [params.article]
+    [params.article.readingTime]
+      enable = true
 
-[markup]
-  [markup.highlight]
-    style = "monokai"
-    lineNos = true
-    codeFences = true
-    guessSyntax = true
+  [params.colorScheme]
+    toggle = true
+    default = "auto"
+
+  [params.widgets]
+    [[params.widgets.homepage]]
+      type = "search"
+    [[params.widgets.homepage]]
+      type = "archives"
+      [params.widgets.homepage.params]
+        limit = 5
+    [[params.widgets.homepage]]
+      type = "categories"
+    [[params.widgets.homepage]]
+      type = "tag-cloud"
 
 [[menu.main]]
   name = "首页"
@@ -42,5 +46,16 @@ theme = "PaperMod"
 
 [[menu.main]]
   name = "关于"
-  url = "/about/"
+  url = "/page/about/"
   weight = 3
+
+[[menu.social]]
+  name = "GitHub"
+  url = "https://github.com/xingvec"
+
+[markup]
+  [markup.highlight]
+    style = "monokai"
+    lineNos = true
+    codeFences = true
+    guessSyntax = true

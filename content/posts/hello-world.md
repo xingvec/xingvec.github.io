@@ -35,7 +35,7 @@ def hello():
 |------|------|
 | 框架 | Hugo |
 | 部署 | GitHub Pages |
-| 主题 | PaperMod |
+| 主题 | Stack |
 
 ---
 
