@@ -1,0 +1,46 @@
+baseURL = "https://xingvec.github.io/"
+languageCode = "zh-cn"
+title = "Xingvec's Blog"
+theme = "PaperMod"
+
+[params]
+  description = "个人博客"
+  author = "xingvec"
+  ShowReadingTime = true
+  ShowShareButtons = false
+  ShowPostNavLinks = true
+  ShowBreadCrumbs = true
+  ShowCodeCopyButtons = true
+  ShowWordCount = true
+  ShowToc = true
+  TocOpen = false
+
+  [params.homeInfoParams]
+    Title = "Xingvec's Blog"
+    Content = "欢迎来到我的博客"
+
+  [[params.socialIcons]]
+    name = "github"
+    url = "https://github.com/xingvec"
+
+[markup]
+  [markup.highlight]
+    style = "monokai"
+    lineNos = true
+    codeFences = true
+    guessSyntax = true
+
+[[menu.main]]
+  name = "首页"
+  url = "/"
+  weight = 1
+
+[[menu.main]]
+  name = "文章"
+  url = "/posts/"
+  weight = 2
+
+[[menu.main]]
+  name = "关于"
+  url = "/about/"
+  weight = 3
