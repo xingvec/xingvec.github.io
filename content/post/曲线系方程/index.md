@@ -5,7 +5,7 @@ draft: false
 description: "这是一篇关于解析几何曲线系技巧的介绍文章"
 tags: ["数学","解析几何"]
 categories: ["学术"]
-image: "img/descartescurves.png" 
+image: "descartescurves.png" 
 ---
 
 > # 曲线系方程
