@@ -1,5 +1,6 @@
 ---
 title: "关于"
+slug: "about"
 date: 2026-08-18
 draft: false
 ---
