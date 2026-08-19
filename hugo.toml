@@ -33,6 +33,7 @@ hasCJKLanguage = true
     toc = true
     readingTime = true
     headingAnchor = true
+    math = true
 
     [params.article.list]
       showTags = true
