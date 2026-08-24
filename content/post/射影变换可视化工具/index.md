@@ -11,9 +11,8 @@ draft: false
 <!-- 这是可选的博文模板。正文随意改写；定稿发布前记得删除上面的 draft: true 行。 -->
 <!-- 工具本体已放在仓库 static/projective-viz/，发布后地址固定为 /projective-viz/ -->
 
-做解析几何时想要一个能直观看到"曲线被射影矩阵变换后变成什么"的工具，于是自己写了一个：
 
-**[打开射影变换可视化工具 →](/projective-viz/)**
+**[打开射影变换可视化工具 →](/ProjTransf/)**
 
 <!-- 如果哪天想把工具直接嵌进博文（而不是跳转），取消下面这行注释即可（主题已开 unsafe，无需改配置）：
 <iframe src="/projective-viz/" style="width:100%;height:900px;border:1px solid #ddd;border-radius:8px" title="射影变换可视化工具"></iframe>
