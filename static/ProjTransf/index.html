@@ -1,0 +1,4169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>射影变换可视化 · Projective Transform</title>
+<!-- 引入 KaTeX CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<style>
+/* ==================== 简约设计系统 ==================== */
+:root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f7f8fa;
+    --surface-3: #eef0f3;
+    --border: #e4e6ea;
+    --border-strong: #d4d6db;
+    --text: #1d2129;
+    --text-muted: #5c6066;
+    --text-subtle: #9ca0a6;
+    --accent: #4a6cb5;
+    --accent-dark: #2a4470;
+    --accent-light: #e6edf7;
+    --accent-soft: #f4f7fc;
+    --accent-border: #c5d4ec;
+    --red: #c0392b;
+    --orange: #e67300;
+    --green: #2e7d32;
+    --blue: #1565c0;
+    --purple: #7b1fa2;
+    --grid: #eef0f3;
+    --grid-major: #d8dbe0;
+    --axis: #2a2a2a;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+    --radius: 6px;
+    --radius-sm: 4px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", Consolas, Menlo, monospace;
+    --toolbar-h: 48px;
+    --inputbar-h: 44px;
+    --sidebar-w: 320px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+*::before, *::after { box-sizing: border-box; }
+html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+button, input, select { font-family: inherit; color: inherit; }
+/* ==================== 顶部工具栏 ==================== */
+.toolbar {
+    height: var(--toolbar-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 4px;
+    flex-shrink: 0;
+    z-index: 100;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+.toolbar::-webkit-scrollbar { height: 0; }
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 8px;
+    border-right: 1px solid var(--border);
+    height: 28px;
+}
+.toolbar-group:last-of-type { border-right: none; }
+.tool-btn {
+    width: 32px; height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: background-color .15s, color .15s;
+    position: relative;
+}
+.tool-btn .icon {
+    width: 18px; height: 18px;
+    display: block;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.tool-btn .icon.is-filled { fill: currentColor; stroke: none; }
+.tool-btn:hover {
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+}
+.tool-btn.active {
+    background: var(--accent-light);
+    color: var(--accent-dark);
+}
+.tool-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tool-btn .tooltip {
+    display: none;
+    position: absolute;
+    top: 100%; left: 50%;
+    transform: translateX(-50%) translateY(6px);
+    background: var(--text);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 200;
+    pointer-events: none;
+    font-weight: 400;
+}
+.tool-btn:hover .tooltip { display: block; }
+.toolbar-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -0.2px;
+}
+.toolbar-title .logo {
+    width: 26px; height: 26px;
+    background: var(--accent);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    font-family: Georgia, serif;
+}
+.toolbar-title .ver {
+    font-size: 10px;
+    color: var(--text-subtle);
+    font-weight: 400;
+    margin-left: 2px;
+    font-family: var(--mono);
+}
+.toolbar-spacer { flex: 1; }
+.toolbar-info {
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 0 12px;
+    display: flex; align-items: center; gap: 8px;
+}
+.toolbar-info .pill {
+    background: var(--accent-light);
+    color: var(--accent-dark);
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+}
+/* ==================== Input Bar ==================== */
+.input-bar {
+    height: var(--inputbar-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 8px;
+    flex-shrink: 0;
+    position: relative;
+}
+.input-bar .fx-prefix {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 15px;
+    color: var(--accent-dark);
+    font-weight: 600;
+    padding-right: 4px;
+    user-select: none;
+}
+.input-bar .fx-prefix::after {
+    content: "(x,y):";
+    font-style: normal;
+    font-family: var(--mono);
+    color: var(--text-subtle);
+    font-size: 12px;
+    font-weight: 400;
+}
+.input-bar .input-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    height: 30px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    transition: border-color .15s, box-shadow .15s;
+    overflow: hidden;
+}
+.input-bar .input-wrapper:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(74,108,181,0.12);
+}
+.input-bar .input-wrapper.error {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(192,57,43,0.10);
+}
+.input-bar .func-input {
+    flex: 1;
+    height: 100%;
+    border: none;
+    padding: 0 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+    background: transparent;
+    color: var(--text);
+    outline: none;
+}
+.input-bar .latex-preview {
+    min-width: 100px;
+    max-width: 40%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    border-left: 1px solid var(--border);
+    background: var(--surface-2);
+    overflow: hidden;
+    white-space: nowrap;
+    color: var(--accent-dark);
+}
+.input-bar .latex-preview .katex { font-size: 1.1em; }
+.input-bar .add-btn {
+    height: 30px;
+    padding: 0 16px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: background .15s;
+    display: inline-flex; align-items: center; gap: 4px;
+}
+.input-bar .add-btn:hover { background: var(--accent-dark); }
+.input-bar .add-btn:active { transform: translateY(1px); }
+.input-bar .hint-trigger {
+    height: 30px;
+    width: 30px;
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-muted);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    transition: all .15s;
+}
+.input-bar .hint-trigger:hover {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-dark);
+}
+.input-bar .hint-trigger.active {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent-dark);
+}
+.input-bar-hint {
+    position: absolute;
+    top: calc(var(--toolbar-h) + var(--inputbar-h));
+    left: 12px;
+    width: 460px;
+    max-height: 60vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    padding: 14px 16px;
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--text);
+    font-family: var(--mono);
+    z-index: 150;
+    display: none;
+}
+.input-bar-hint.show { display: block; }
+.input-bar-hint h4 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    font-family: var(--font);
+}
+.input-bar-hint .example { color: var(--accent-dark); font-weight: 600; }
+.input-bar-hint .row { padding: 2px 0; }
+.input-bar-hint .close-btn {
+    position: absolute;
+    top: 8px; right: 10px;
+    width: 22px; height: 22px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-subtle);
+    font-size: 16px;
+    line-height: 1;
+    border-radius: 4px;
+}
+.input-bar-hint .close-btn:hover { color: var(--red); background: var(--surface-2); }
+/* ==================== 主布局 ==================== */
+.main-layout {
+    display: flex;
+    width: 100%;
+    height: calc(100vh - var(--toolbar-h) - var(--inputbar-h));
+}
+/* ==================== 侧边栏 ==================== */
+.sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--surface-2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+.sidebar::-webkit-scrollbar { width: 6px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: #c8ccd2; border-radius: 3px; }
+.sidebar::-webkit-scrollbar-thumb:hover { background: #a8acb2; }
+.sidebar-section { border-bottom: 1px solid var(--border); }
+.sidebar-header {
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.sidebar-header .icon {
+    width: 14px; height: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--accent-dark);
+}
+.sidebar-body { padding: 12px 14px; }
+/* 函数列表 */
+.func-list { display: flex; flex-direction: column; gap: 4px; }
+.func-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+}
+.func-item:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-sm);
+}
+.func-item .color-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+.func-item .func-expr {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    line-height: 1.4;
+}
+.func-item .remove-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-subtle);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 4px;
+    line-height: 1;
+    border-radius: 3px;
+}
+.func-item .remove-btn:hover { color: var(--red); }
+.func-error-msg {
+    font-size: 11px;
+    color: var(--red);
+    margin-top: 6px;
+    padding: 6px 8px;
+    background: rgba(192,57,43,0.06);
+    border-radius: var(--radius-sm);
+    display: none;
+}
+.func-error-msg.show { display: block; }
+.func-btn {
+    padding: 6px 12px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: background .15s;
+}
+.func-btn:hover { background: var(--accent-dark); }
+.func-btn.secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+}
+.func-btn.secondary:hover {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-dark);
+}
+/* 矩阵 */
+.matrix-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+}
+.matrix-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 6px 4px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: border-color .15s;
+}
+.matrix-cell:hover { border-color: var(--accent); }
+.matrix-cell .label {
+    font-size: 10px;
+    color: var(--text-subtle);
+    font-family: var(--mono);
+}
+.matrix-cell input[type="number"] {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 3px 4px;
+    font-family: var(--mono);
+    font-size: 12px;
+    text-align: center;
+    color: var(--text);
+    outline: none;
+    background: var(--surface);
+    -moz-appearance: textfield;
+}
+.matrix-cell input[type="number"]::-webkit-outer-spin-button,
+.matrix-cell input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none; margin: 0;
+}
+.matrix-cell input[type="number"]:focus { border-color: var(--accent); }
+.matrix-cell input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 3px;
+    background: var(--border-strong);
+    border-radius: 2px;
+    outline: none;
+}
+.matrix-cell input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--surface);
+}
+.matrix-cell input[type="range"]::-moz-range-thumb {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--surface);
+}
+.matrix-presets {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.preset-btn {
+    padding: 4px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all .15s;
+}
+.preset-btn:hover {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-dark);
+}
+.matrix-display {
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.matrix-display .det-value {
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--accent-dark);
+    font-size: 13px;
+}
+.matrix-display .det-zero { color: var(--red); }
+/* 视图控制 */
+.view-control {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.view-control label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+}
+.view-control input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 14px;
+    height: 14px;
+}
+.range-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+.range-row span { min-width: 40px; color: var(--text-muted); }
+.range-row input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 3px;
+    background: var(--border-strong);
+    border-radius: 2px;
+    outline: none;
+}
+.range-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+.range-row input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--surface);
+}
+.range-row .val {
+    min-width: 36px;
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+}
+select {
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%235c6066" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 24px !important;
+    cursor: pointer;
+}
+/* ==================== 画布区域 ==================== */
+.canvas-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface);
+}
+.canvas-container {
+    flex: 1;
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+    overflow: hidden;
+}
+.canvas-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    overflow: hidden;
+    position: relative;
+}
+.canvas-header {
+    height: 36px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    font-size: 12px;
+    color: var(--text);
+    flex-shrink: 0;
+}
+.canvas-header .title {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.canvas-header .badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 500;
+}
+.canvas-header .badge.projective { background: var(--purple); }
+.canvas-header .coord-display {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.canvas-wrapper {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--surface);
+}
+.canvas-wrapper canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+}
+.canvas-wrapper canvas.dragging { cursor: grabbing; }
+.status-bar {
+    height: 28px;
+    background: var(--surface-2);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    font-size: 11px;
+    color: var(--text-muted);
+    gap: 16px;
+    flex-shrink: 0;
+}
+.status-bar .item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.status-bar .item strong {
+    color: var(--text);
+    font-weight: 500;
+    font-family: var(--mono);
+}
+.format-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.7;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-family: var(--mono);
+    margin-bottom: 6px;
+}
+.format-hint .example { color: var(--accent-dark); font-weight: 600; }
+.mode-toggle {
+    margin-left: auto;
+    padding: 3px 10px;
+    font-size: 10px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: white;
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .15s;
+}
+.mode-toggle:hover { background: var(--accent-dark); }
+.mode-toggle.active {
+    background: var(--purple);
+    border-color: var(--purple);
+}
+.camera-hint {
+    font-size: 11px;
+    color: var(--text);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-light);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    line-height: 1.6;
+}
+.camera-hint .tip { color: var(--text-muted); font-size: 10px; }
+#canvas-3d {
+    width: 100%;
+    height: 200px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    display: block;
+    cursor: grab;
+}
+#canvas-3d:active { cursor: grabbing; }
+.camera-controls .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    font-size: 11px;
+}
+.camera-controls .slider-row label {
+    width: 52px;
+    color: var(--text-muted);
+    font-size: 10px;
+}
+.camera-controls .slider-row input[type="range"] {
+    flex: 1;
+    height: 3px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border-strong);
+    border-radius: 2px;
+}
+.camera-controls .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--surface);
+}
+.camera-controls .slider-row .val {
+    width: 40px;
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text);
+}
+.camera-presets {
+    display: flex;
+    gap: 4px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+.cam-preset-btn {
+    flex: 1;
+    min-width: 48px;
+    padding: 4px 4px;
+    font-size: 10px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all .15s;
+}
+.cam-preset-btn:hover {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-dark);
+}
+#camera-panel.disabled .camera-controls,
+#camera-panel.disabled .camera-presets,
+#camera-panel.disabled #canvas-3d {
+    opacity: 0.4;
+    pointer-events: none;
+}
+#camera-panel.disabled #canvas-3d { cursor: default; }
+.cam-preset-desc {
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--text-muted);
+    min-height: 14px;
+    line-height: 1.4;
+}
+.curve-info-panel {
+    margin-top: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text);
+    display: none;
+}
+.curve-info-panel.show { display: block; }
+.curve-info-panel .panel-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+.curve-info-panel .panel-title .icon-svg {
+    width: 14px; height: 14px;
+    stroke: var(--accent); fill: none;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.curve-info-panel .panel-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 0;
+}
+.curve-info-panel .panel-label {
+    color: var(--text-muted);
+    font-size: 10.5px;
+    flex-shrink: 0;
+    min-width: 56px;
+}
+.curve-info-panel .panel-value {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text);
+    text-align: right;
+    word-break: break-all;
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    line-height: 1.4;
+}
+.curve-info-panel .type-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.5;
+    border: 1px solid transparent;
+}
+.curve-info-panel .type-circle    { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
+.curve-info-panel .type-ellipse   { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
+.curve-info-panel .type-parabola  { background: #fff4e6; color: #e65100; border-color: #ffcc80; }
+.curve-info-panel .type-hyperbola { background: #fdecea; color: #b71c1c; border-color: #f9a8a8; }
+.curve-info-panel .type-function  { background: #e3f2fd; color: #1565c0; border-color: #90caf9; }
+.curve-info-panel .type-implicit  { background: #f3e5f5; color: #7b1fa2; border-color: #ce93d8; }
+.curve-info-panel .transform-arrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+.curve-info-panel .transform-arrow .from,
+.curve-info-panel .transform-arrow .to {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.curve-info-panel .transform-arrow .arrow-icon {
+    width: 18px; height: 14px;
+    stroke: var(--purple); fill: none;
+    stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.curve-info-panel .panel-hint {
+    margin-top: 8px;
+    padding: 6px 8px;
+    background: var(--surface-2);
+    border-left: 2px solid var(--accent);
+    border-radius: 2px;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+.canvas-hint-text {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: var(--text-muted);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .3s;
+}
+.canvas-hint-text.show { opacity: 1; }
+.katex { font-size: 1.1em; }
+.katex-display { margin: 0; }
+@media (max-width: 1100px) {
+    .sidebar { width: 280px; min-width: 280px; }
+}
+@media (max-width: 900px) {
+    .sidebar { width: 260px; min-width: 260px; }
+    .matrix-grid { gap: 4px; }
+    .matrix-cell input[type="number"] { font-size: 11px; padding: 2px; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="icon-move" viewBox="0 0 24 24">
+    <path d="M12 2 L9.5 4.5 H10.8 V10.8 H4.8 L7 8.5 L5.5 7 L2 11 L5.5 15 L7 13.5 L4.8 13.2 V10.8 H10.8 V19.5 H9.5 L12 22 L14.5 19.5 H13.2 V13.2 H19.2 L17 15.5 L18.5 17 L22 13 L18.5 9 L17 10.5 L19.2 10.8 H13.2 V4.5 H14.5 Z"/>
+  </symbol>
+  <symbol id="icon-zoom-in" viewBox="0 0 24 24">
+    <circle cx="10.5" cy="10.5" r="6.5"/>
+    <line x1="10.5" y1="7" x2="10.5" y2="14"/>
+    <line x1="7" y1="10.5" x2="14" y2="10.5"/>
+    <line x1="15.5" y1="15.5" x2="20" y2="20"/>
+  </symbol>
+  <symbol id="icon-zoom-out" viewBox="0 0 24 24">
+    <circle cx="10.5" cy="10.5" r="6.5"/>
+    <line x1="7" y1="10.5" x2="14" y2="10.5"/>
+    <line x1="15.5" y1="15.5" x2="20" y2="20"/>
+  </symbol>
+  <symbol id="icon-reset" viewBox="0 0 24 24">
+    <path d="M20 11 A8 8 0 1 0 17.5 16.5"/>
+    <polyline points="20,4 20,11 13,11"/>
+  </symbol>
+  <symbol id="icon-grid" viewBox="0 0 24 24">
+    <rect x="3" y="3" width="18" height="18" rx="1"/>
+    <line x1="9"  y1="3" x2="9"  y2="21"/>
+    <line x1="15" y1="3" x2="15" y2="21"/>
+    <line x1="3"  y1="9"  x2="21" y2="9"/>
+    <line x1="3"  y1="15" x2="21" y2="15"/>
+  </symbol>
+  <symbol id="icon-axes" viewBox="0 0 24 24">
+    <path d="M4 20 L4 4"/>
+    <polyline points="2,6 4,4 6,6"/>
+    <path d="M4 20 L20 20"/>
+    <polyline points="18,18 20,20 18,22"/>
+  </symbol>
+  <symbol id="icon-labels" viewBox="0 0 24 24">
+    <path d="M3 12 L11 4 L20 4 L20 13 L12 21 Z"/>
+    <circle cx="16" cy="8" r="1.4" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="icon-points" viewBox="0 0 24 24">
+    <circle cx="6"  cy="7"  r="1.6" fill="currentColor" stroke="none"/>
+    <circle cx="12" cy="5"  r="1.6" fill="currentColor" stroke="none"/>
+    <circle cx="18" cy="9"  r="1.6" fill="currentColor" stroke="none"/>
+    <circle cx="8"  cy="14" r="1.6" fill="currentColor" stroke="none"/>
+    <circle cx="15" cy="16" r="1.6" fill="currentColor" stroke="none"/>
+    <circle cx="20" cy="19" r="1.6" fill="currentColor" stroke="none"/>
+    <circle cx="5"  cy="20" r="1.6" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="icon-roi" viewBox="0 0 24 24">
+    <rect x="4" y="4" width="16" height="16" rx="1" stroke-dasharray="3 2"/>
+    <path d="M4 4 L9 4 M15 4 L20 4 M4 4 L4 9 M4 15 L4 20" stroke-width="2.6"/>
+  </symbol>
+  <symbol id="icon-play" viewBox="0 0 24 24">
+    <path d="M7 5 L19 12 L7 19 Z" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="icon-pause" viewBox="0 0 24 24">
+    <rect x="7"  y="5" width="3.5" height="14" rx="0.6" fill="currentColor" stroke="none"/>
+    <rect x="13.5" y="5" width="3.5" height="14" rx="0.6" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="icon-camera" viewBox="0 0 24 24">
+    <rect x="3" y="7" width="18" height="13" rx="2"/>
+    <path d="M8 7 L9.5 4 L14.5 4 L16 7"/>
+    <circle cx="12" cy="13.5" r="3.5"/>
+  </symbol>
+  <symbol id="icon-matrix" viewBox="0 0 24 24">
+    <path d="M4 3 V21 M20 3 V21"/>
+    <line x1="4" y1="6"  x2="20" y2="6"/>
+    <line x1="4" y1="12" x2="20" y2="12"/>
+    <line x1="4" y1="18" x2="20" y2="18"/>
+    <line x1="4" y1="9"  x2="20" y2="9"/>
+    <line x1="4" y1="15" x2="20" y2="15"/>
+  </symbol>
+  <symbol id="icon-perspective" viewBox="0 0 24 24">
+    <path d="M4 8 L12 4 L20 8 L20 18 L12 22 L4 18 Z"/>
+    <path d="M4 8 L12 12 L20 8"/>
+    <path d="M12 12 L12 22"/>
+  </symbol>
+  <symbol id="icon-settings" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="3.2"/>
+    <path d="M12 2 L12 5 M12 19 L12 22 M2 12 L5 12 M19 12 L22 12 M4.9 4.9 L7 7 M17 17 L19.1 19.1 M4.9 19.1 L7 17 M17 7 L19.1 4.9"/>
+  </symbol>
+  <symbol id="icon-info" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9.5"/>
+    <line x1="12" y1="11" x2="12" y2="17"/>
+    <circle cx="12" cy="8" r="1.2" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="icon-fx" viewBox="0 0 24 24">
+    <path d="M6 19 C6 19 7 6 11 6 C9 6 8 7 8 9"/>
+    <path d="M5 13 L11 13"/>
+    <path d="M15 9 L21 17 M21 9 L15 17"/>
+  </symbol>
+  <symbol id="icon-pin" viewBox="0 0 24 24">
+    <path d="M12 2 C8 2 6 5 6 9 C6 13 12 22 12 22 C12 22 18 13 18 9 C18 5 16 2 12 2 Z"/>
+    <circle cx="12" cy="9" r="2.5"/>
+  </symbol>
+  <symbol id="icon-transform" viewBox="0 0 24 24">
+    <path d="M3 12 H19"/>
+    <polyline points="15,8 19,12 15,16"/>
+  </symbol>
+</svg>
+<div class="toolbar">
+    <div class="toolbar-title">
+        <div class="logo">P</div>
+        射影变换可视化
+        <span class="ver">V14</span>
+    </div>
+    <div class="toolbar-group">
+        <button class="tool-btn active" id="tool-move">
+            <svg class="icon"><use href="#icon-move"/></svg>
+            <span class="tooltip">移动视图 (M)</span>
+        </button>
+        <button class="tool-btn" id="tool-zoom-in">
+            <svg class="icon"><use href="#icon-zoom-in"/></svg>
+            <span class="tooltip">放大</span>
+        </button>
+        <button class="tool-btn" id="tool-zoom-out">
+            <svg class="icon"><use href="#icon-zoom-out"/></svg>
+            <span class="tooltip">缩小</span>
+        </button>
+        <button class="tool-btn" id="tool-reset">
+            <svg class="icon"><use href="#icon-reset"/></svg>
+            <span class="tooltip">重置视图</span>
+        </button>
+    </div>
+    <div class="toolbar-group">
+        <button class="tool-btn active" id="tool-grid">
+            <svg class="icon"><use href="#icon-grid"/></svg>
+            <span class="tooltip">网格 (G)</span>
+        </button>
+        <button class="tool-btn active" id="tool-axes">
+            <svg class="icon"><use href="#icon-axes"/></svg>
+            <span class="tooltip">坐标轴 (A)</span>
+        </button>
+        <button class="tool-btn active" id="tool-labels">
+            <svg class="icon"><use href="#icon-labels"/></svg>
+            <span class="tooltip">标签 (L)</span>
+        </button>
+        <button class="tool-btn" id="tool-points">
+            <svg class="icon"><use href="#icon-points"/></svg>
+            <span class="tooltip">采样点</span>
+        </button>
+        <button class="tool-btn" id="tool-roi">
+            <svg class="icon"><use href="#icon-roi"/></svg>
+            <span class="tooltip">变换区域</span>
+        </button>
+    </div>
+    <div class="toolbar-group">
+        <button class="tool-btn" id="tool-animate">
+            <svg class="icon is-filled"><use href="#icon-play"/></svg>
+            <span class="tooltip">动画</span>
+        </button>
+        <button class="tool-btn" id="tool-screenshot">
+            <svg class="icon"><use href="#icon-camera"/></svg>
+            <span class="tooltip">截图导出</span>
+        </button>
+    </div>
+    <div class="toolbar-spacer"></div>
+    <div class="toolbar-info">
+        <span class="pill">射影变换</span>
+    </div>
+</div>
+<div class="input-bar">
+    <span class="fx-prefix">f</span>
+    <div class="input-wrapper" id="input-wrapper">
+        <input type="text" class="func-input" id="func-input" placeholder="输入如 sin^2(x)+zeta(y) 或 log(2, x^2+y^2)" />
+        <div class="latex-preview" id="latex-preview"></div>
+    </div>
+    <button class="add-btn" id="func-add">
+        <svg class="icon" style="width:14px;height:14px;stroke-width:2.2"><use href="#icon-zoom-in"/></svg>
+        添加
+    </button>
+    <button class="hint-trigger" id="hint-trigger" title="语法帮助">?</button>
+</div>
+<div class="input-bar-hint" id="input-bar-hint">
+    <button class="close-btn" id="hint-close">×</button>
+    <h4>统一输入框 · 自动识别类型（支持 KaTeX 渲染，²³ 可用 ^2 ^3 代替）</h4>
+    <div class="row"><span class="example">显式函数</span>: x^2, 2*sin(x), 0.3*x^2（无等号 → y=f(x)）</div>
+    <div class="row"><span class="example">y= 开头</span>: y=x^2, y=x^3, y=x^4-x^2（同样视作函数）</div>
+    <div class="row"><span class="example">圆</span>: x^2+y^2=4, (x-1)^2+(y-2)^2=9</div>
+    <div class="row"><span class="example">椭圆</span>: x^2/4+y^2/9=1, x^2+5y^2=5（任意变形自动归一化）</div>
+    <div class="row"><span class="example">抛物线</span>: y^2=4*x, x^2=4*y, y=x^2-3*x+2</div>
+    <div class="row"><span class="example">双曲线</span>: x^2/4-y^2/9=1, y^2/9-x^2/4=1, x*y=1</div>
+    <div class="row"><span class="example">含 xy 项</span>: x^2+2*x*y+y^2=1（自动旋转消元）</div>
+    <div class="row"><span class="example">一般式</span>: A=1,B=0,C=1,D=0,E=0,F=-4</div>
+    <div class="row"><span class="example">高次曲线</span>: x^3+y^3=3, x^2*y+y^3=1, y=x^4-x^2（3次及以上代数曲线）</div>
+    <div class="row"><span class="example">任意隐式曲线</span>: sin(x^2+y^2)=cos(x*y), exp(x*y)=1.5, x^2-y^2=sin(x*y)</div>
+    <div class="row"><span class="example">特殊函数</span>: log(2, x) (2底对数), lg(y) (10底), ln(y), 3!, (x+y)!, gamma(x), zeta(x*y), sin^2(x)</div>
+</div>
+<div class="main-layout">
+    <div class="sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-header">
+                <svg class="icon" width="14" height="14" style="stroke:var(--accent);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;"><use href="#icon-fx"/></svg>
+                已添加曲线
+            </div>
+            <div class="sidebar-body">
+                <div class="func-list" id="func-list"></div>
+                <div class="func-error-msg" id="func-error"></div>
+                <div style="font-size:10px; color:var(--text-subtle); margin-top:8px;">点击输入框右侧 ? 查看语法示例；点击列表项可选中查看类型</div>
+            </div>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-header">
+                <span class="icon">⊞</span>
+                变换矩阵 M (3×3)
+            </div>
+            <div class="sidebar-body">
+                <div class="matrix-grid" id="matrix-grid"></div>
+                <div class="matrix-presets">
+                    <button class="preset-btn" data-preset="identity">恒等</button>
+                    <button class="preset-btn" data-preset="vp_horizontal">单灭点·水平</button>
+                    <button class="preset-btn" data-preset="vp_vertical">单灭点·竖直</button>
+                    <button class="preset-btn" data-preset="vp_double">双灭点</button>
+                    <button class="preset-btn" data-preset="vp_strong">强透视</button>
+                    <button class="preset-btn" data-preset="affine_shear">仿射错切</button>
+                    <button class="preset-btn" data-preset="similarity">相似缩放</button>
+                </div>
+                <div class="preset-desc" id="preset-desc" style="margin-top:8px; font-size:11px; color:var(--text-muted); min-height:14px;"></div>
+                <div class="matrix-display">
+                    det(M) = <span class="det-value" id="det-value">1.000</span>
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-section disabled" id="camera-panel">
+            <div class="sidebar-header">
+                <span class="icon">📷</span>
+                3D 相机视角
+                <button class="mode-toggle" id="mode-toggle">切换到相机模式</button>
+            </div>
+            <div class="sidebar-body">
+                <div class="camera-hint">
+                    🎯 <b>拖拽相机 ⊆ 调整矩阵</b><br>
+                    <span class="tip">上下拖: 俯仰角 θ · 左右拖: 方位角 φ · 滚轮: 距离 d</span><br>
+                    <span class="tip">勾选「f 自适应」时 f=d/2；取消勾选可独立拖 f 滑块</span>
+                </div>
+                <canvas id="canvas-3d"></canvas>
+                <div class="camera-controls">
+                    <div class="slider-row">
+                        <label>θ 俯仰</label>
+                        <input type="range" id="cam-theta" min="0" max="89" step="1" value="30" />
+                        <span class="val" id="cam-theta-val">30°</span>
+                    </div>
+                    <div class="slider-row">
+                        <label>φ 方位</label>
+                        <input type="range" id="cam-phi" min="0" max="360" step="5" value="0" />
+                        <span class="val" id="cam-phi-val">0°</span>
+                    </div>
+                    <div class="slider-row">
+                        <label>d 距离</label>
+                        <input type="range" id="cam-d" min="0.3" max="30" step="0.1" value="10" />
+                        <span class="val" id="cam-d-val">10.0</span>
+                    </div>
+                    <div class="slider-row" style="align-items:center; gap:8px;">
+                        <label style="width:auto; font-size:10px; color:var(--text-muted);">f 自适应</label>
+                        <input type="checkbox" id="cam-focal-auto" checked style="accent-color:var(--accent); width:auto; margin:0;">
+                        <span style="font-size:10px; color:var(--text-muted);">f=d/2</span>
+                    </div>
+                    <div class="slider-row">
+                        <label>f 焦距</label>
+                        <input type="range" id="cam-focal" min="0.15" max="15" step="0.05" value="5" />
+                        <span class="val" id="cam-focal-val">5.0</span>
+                    </div>
+                </div>
+                <div class="curve-info-panel" id="curve-info-panel">
+                    <div class="panel-title">
+                        <svg class="icon-svg"><use href="#icon-pin"/></svg>
+                        选中曲线信息
+                    </div>
+                    <div class="panel-row"><span class="panel-label">原类型</span><span class="panel-value" id="curve-info-type">—</span></div>
+                    <div class="panel-row"><span class="panel-label">方程</span><span class="panel-value" id="curve-info-expr">—</span></div>
+                    <div class="panel-row"><span class="panel-label">判据</span><span class="panel-value" id="curve-info-detail">—</span></div>
+                    <div class="transform-arrow" id="curve-info-transform-arrow" style="display:none;">
+                        <span class="from" id="curve-info-from-badge">—</span>
+                        <svg class="arrow-icon"><use href="#icon-transform"/></svg>
+                        <span class="to" id="curve-info-to-badge">—</span>
+                    </div>
+                    <div class="panel-row" id="curve-info-image-row" style="display:none; margin-top:2px; padding-top:6px; border-top:1px dashed var(--border);">
+                        <span class="panel-label">射影后</span><span class="panel-value" id="curve-info-image">—</span>
+                    </div>
+                    <div class="panel-row" id="curve-info-image-expr-row" style="display:none;">
+                        <span class="panel-label">像方程</span><span class="panel-value" id="curve-info-image-expr" style="font-size:10px; word-break:break-all;">—</span>
+                    </div>
+                    <div class="panel-row" id="curve-info-image-detail-row" style="display:none;">
+                        <span class="panel-label">像判据</span><span class="panel-value" id="curve-info-image-detail" style="font-size:10px;">—</span>
+                    </div>
+                    <div class="panel-hint" id="curve-info-hint">点击画布上的曲线可查看类型 · 再次点击取消选中</div>
+                </div>
+                <div class="camera-presets">
+                    <button class="cam-preset-btn" data-cam="top">正视</button>
+                    <button class="cam-preset-btn" data-cam="shallow">浅俯</button>
+                    <button class="cam-preset-btn" data-cam="side">侧斜</button>
+                    <button class="cam-preset-btn" data-cam="low">低角</button>
+                    <button class="cam-preset-btn" data-cam="extreme">极端</button>
+                    <button class="cam-preset-btn" data-cam="parabolic">近临界视角</button>
+                    <button class="cam-preset-btn" data-cam="hyperbolic">极端透视</button>
+                </div>
+                <div class="cam-preset-desc" id="cam-preset-desc"></div>
+            </div>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-header">
+                <span class="icon">⚙</span>
+                视图设置
+            </div>
+            <div class="sidebar-body">
+                <div class="view-control">
+                    <label><input type="checkbox" id="show-grid" checked> 显示网格</label>
+                    <label><input type="checkbox" id="show-axes" checked> 显示坐标轴</label>
+                    <label><input type="checkbox" id="show-labels" checked> 显示刻度</label>
+                    <label><input type="checkbox" id="show-curve-points"> 标记采样点</label>
+                    <label><input type="checkbox" id="show-roi"> 显示变换区域</label>
+                    <div class="range-row" style="flex-direction: column; align-items: stretch; gap: 6px; margin-top: 8px;">
+                        <span>显示模式</span>
+                        <select id="display-mode" style="width: 100%; height: 26px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 4px; font-size: 12px; color: var(--text); background: var(--surface); outline: none;">
+                            <option value="split">原 | 射分屏</option>
+                            <option value="single_normal_dashed_projective_solid">原虚 | 射实</option>
+                            <option value="single_normal_solid_projective_dashed">原实 | 射虚</option>
+                            <option value="single_projective">原隐 | 射显</option>
+                            <option value="single_normal">原显 | 射隐</option>
+                        </select>
+                    </div>
+                    <div class="range-row">
+                        <span>缩放</span>
+                        <input type="range" id="view-scale" min="10" max="200" value="50" step="1" />
+                        <span class="val" id="view-scale-val">50</span>
+                    </div>
+                    <div class="range-row">
+                        <span>X偏移</span>
+                        <input type="range" id="view-ox" min="-400" max="400" value="0" step="1" />
+                        <span class="val" id="view-ox-val">0</span>
+                    </div>
+                    <div class="range-row">
+                        <span>Y偏移</span>
+                        <input type="range" id="view-oy" min="-400" max="400" value="0" step="1" />
+                        <span class="val" id="view-oy-val">0</span>
+                    </div>
+                    <div class="range-row">
+                        <span>采样数</span>
+                        <input type="range" id="sample-count" min="50" max="2000" value="500" step="10" />
+                        <span class="val" id="sample-count-val">500</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="canvas-area">
+        <div class="canvas-container">
+            <div class="canvas-panel" id="panel-normal">
+                <div class="canvas-header">
+                    <div class="title">
+                        <span class="badge">普通视角</span>
+                        原始函数
+                    </div>
+                    <div class="coord-display" id="coord-normal">x: 0.00, y: 0.00</div>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="canvas-normal"></canvas>
+                </div>
+            </div>
+            <div class="canvas-panel" id="panel-projective">
+                <div class="canvas-header">
+                    <div class="title">
+                        <span class="badge projective">射影视角</span>
+                        H 变换后
+                    </div>
+                    <div class="coord-display" id="coord-projective">x: 0.00, y: 0.00</div>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="canvas-projective"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="status-bar">
+            <div class="item">状态: <strong id="status-text">就绪</strong></div>
+            <div class="item">函数数: <strong id="status-func-count">0</strong></div>
+            <div class="item">采样: <strong id="status-samples">0</strong></div>
+            <div class="item" style="margin-left:auto;">射影变换可视化</div>
+        </div>
+    </div>
+</div>
+<!-- 引入 KaTeX JS -->
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script>
+/* ==================== Lanczos Gamma & Zeta 实现 (带缓存与解析延拓) ==================== */
+const gammaCache = new Map();
+function lanczosGamma(z) {
+    const key = Math.round(z * 1000);
+    if (gammaCache.has(key)) return gammaCache.get(key);
+    if (gammaCache.size > 10000) gammaCache.clear();
+    let result;
+    const g = 7;
+    const c = [
+        0.99999999999980993, 676.5203681218851, -1259.1392167902, 771.3234287775,
+        -176.61502916214, 12.5073432786869, -0.13857109526572, 9.9843695780197e-6, 1.5056327351493e-7
+    ];
+    if (z < 0.5) {
+        result = Math.PI / (Math.sin(Math.PI * z) * lanczosGamma(1 - z));
+    } else {
+        z -= 1;
+        let x = c[0];
+        for (let i = 1; i < g + 2; i++) {
+            x += c[i] / (z + i);
+        }
+        const t = z + g + 0.5;
+        result = Math.sqrt(2 * Math.PI) * Math.pow(t, z + 0.5) * Math.exp(-t) * x;
+    }
+    if (!isFinite(result)) result = NaN;
+    gammaCache.set(key, result);
+    return result;
+}
+function _fact(n) {
+    if (n < 0 && Number.isInteger(n)) return NaN;
+    return lanczosGamma(n + 1);
+}
+const zetaCache = new Map();
+function zetaFunction(s) {
+    if (s === 1) return NaN;
+    
+    const key = Math.round(s * 1000);
+    if (zetaCache.has(key)) return zetaCache.get(key);
+    if (zetaCache.size > 10000) zetaCache.clear();
+    let result;
+    if (s < 1) {
+        // 使用函数方程将 s < 1 映射到 1-s > 1，从而使用稳定的直接级数求和
+        if (s < -30) {
+            result = NaN; // 防止极端负数导致 Gamma 和 Pow 溢出
+        } else {
+            const zeta_1_minus_s = zetaFunction(1 - s); // 1-s > 1，走 else 分支
+            const term1 = Math.pow(2, s);
+            const term2 = Math.pow(Math.PI, s - 1);
+            const term3 = Math.sin(Math.PI * s / 2);
+            const term4 = lanczosGamma(1 - s);
+            const res = term1 * term2 * term3 * term4 * zeta_1_minus_s;
+            result = isFinite(res) ? res : NaN;
+        }
+    } else {
+        // s > 1: 使用标准的收敛级数
+        let sum = 1;
+        for (let i = 2; i <= 100; i++) {
+            const term = 1 / Math.pow(i, s);
+            sum += term;
+            if (term < 1e-16) break;
+        }
+        result = sum;
+    }
+    
+    zetaCache.set(key, result);
+    return result;
+}
+/* ==================== 数学表达式预处理 ==================== */
+function fixFunctionPowers(s) {
+    const funcs = ['sinh', 'cosh', 'tanh', 'asin', 'acos', 'atan', 'sin', 'cos', 'tan', 'exp', 'ln', 'lg', 'log', 'sqrt', 'zeta', 'gamma', 'abs'];
+    const regex = new RegExp(`\\b(${funcs.join('|')})\\s*\\^\\s*([0-9]+(?:\\.[0-9]+)?)\\s*\\(`, 'g');
+    let result = '';
+    let lastIndex = 0;
+    let match;
+    while ((match = regex.exec(s)) !== null) {
+        result += s.substring(lastIndex, match.index);
+        const funcName = match[1];
+        const power = match[2];
+        let start = match.index + match[0].length;
+        let depth = 1;
+        let end = start;
+        while (end < s.length && depth > 0) {
+            if (s[end] === '(') depth++;
+            if (s[end] === ')') depth--;
+            end++;
+        }
+        if (depth === 0) {
+            const inner = s.substring(start, end - 1);
+            result += `((${funcName}(${fixFunctionPowers(inner)})) ** ${power})`;
+        } else {
+            result += match[0];
+        }
+        lastIndex = end;
+    }
+    result += s.substring(lastIndex);
+    return result;
+}
+/* ==================== 数学工具 ==================== */
+function parseExpression(expr) {
+    let processed = expr.trim();
+    if (!processed) return null;
+    processed = processed
+        .replace(/([a-zA-Z0-9_\)\.]+)!/g, '_fact($1)')
+        .replace(/²/g, '^2').replace(/³/g, '^3')
+        .replace(/⁴/g, '^4').replace(/⁵/g, '^5').replace(/⁶/g, '^6')
+        .replace(/·/g, '*').replace(/×/g, '*');
+    processed = fixFunctionPowers(processed);
+    processed = processed.replace(/\^/g, '**');
+    processed = processed
+        .replace(/(\d)([a-zA-Z(])/g, '$1*$2')
+        .replace(/(\))(\d|[a-zA-Z(])/g, '$1*$2')
+        .replace(/([a-zA-Z])(\d)/g, (m, p1, p2) => {
+            if (['sin','cos','tan','exp','log','ln','lg','sqrt','abs','pi','e','gamma','log10','log2','zeta'].some(k => processed.toLowerCase().includes(k))) {}
+            return p1 === 'x' ? p1 + '*' + p2 : m;
+        });
+    try {
+        const fn = new Function('x', `
+            "use strict";
+            const {sin,cos,tan,asin,acos,atan,exp,sqrt,abs,sign,floor,ceil,round,max,min,pow,atan2,sinh,cosh,tanh,PI,E} = Math;
+            const ln = Math.log;
+            const log = function() {
+                if (arguments.length === 1) return Math.log10(arguments[0]);
+                if (arguments.length === 2) return Math.log(arguments[1]) / Math.log(arguments[0]);
+                return NaN;
+            };
+            const lg = Math.log10;
+            const log2 = Math.log2;
+            const pi = PI, e = E;
+            const gamma = lanczosGamma;
+            const zeta = zetaFunction;
+            const _fact = ${_fact.toString()};
+            return (${processed});
+        `);
+        const test = fn(0);
+        if (typeof test !== 'number' && !isFinite(test)) {
+            if (typeof test !== 'number') throw new Error('返回值非数字');
+        }
+        return fn;
+    } catch(e) {
+        throw new Error('表达式错误: ' + e.message);
+    }
+}
+/* ==================== LaTeX 转换 ==================== */
+function exprToLatex(expr) {
+    let s = expr.trim();
+    s = s.replace(/\*/g, ' \\cdot ');
+    s = s.replace(/\bpi\b/gi, '\\pi');
+    
+    let placeholders = {};
+    function addPlaceholder(match, p1) {
+        const id = `\x00${p1}\x00`;
+        placeholders[id] = '\\' + p1;
+        return id;
+    }
+    s = s.replace(/\b(log_2|log_10|sinh|cosh|tanh|asin|acos|atan|sin|cos|tan|exp|sqrt|gamma|zeta|abs|ln|lg|log)\b/g, addPlaceholder);
+    
+    for (const id in placeholders) {
+        s = s.split(id).join(placeholders[id]);
+    }
+    s = s.replace(/\\log\s*\(\s*([^,]+?)\s*,\s*(.+?)\s*\)/g, '\\log_{$1}($2)');
+    
+    return s;
+}
+/* ==================== 圆锥曲线解析 ==================== */
+function fmtNum(v) {
+    if (Number.isInteger(v)) return v.toString();
+    return parseFloat(v.toFixed(2)).toString();
+}
+function parseConic(rawExpr) {
+    let s = rawExpr.trim().replace(/\s+/g, '');
+    if (!s) return null;
+    s = s.replace(/([a-zA-Z0-9_\)\.]+)!/g, '_fact($1)');
+    s = s.replace(/²/g, '^2').replace(/³/g, '^3').replace(/·/g, '*').replace(/×/g, '*');
+    s = s.replace(/\bpi\b/gi, '(' + Math.PI + ')');
+    s = s.replace(/(\d)([a-zA-Z(])/g, '$1*$2');
+    s = fixFunctionPowers(s);
+    
+    const _funcs = ['sinh', 'cosh', 'tanh', 'asin', 'acos', 'atan', 'sin', 'cos', 'tan', 'exp', 'ln', 'lg', 'log', 'sqrt', 'zeta', 'gamma', 'abs', 'sign', 'floor', 'ceil', 'round', 'max', 'min', 'pow', 'log2', 'log10', '_fact'];
+    let _protected = s;
+    _funcs.forEach((name, i) => {
+        _protected = _protected.replace(new RegExp('\\b' + name + '\\b', 'g'), '\x00' + i + '\x00');
+    });
+    _protected = _protected.replace(/([a-zA-Z])([a-zA-Z])/g, '$1*$2');
+    s = _protected.replace(/\x00\d+\x00/g, m => _funcs[parseInt(m.replace(/\x00/g,''))]);
+    s = s.replace(/\^/g, '**');
+    if (/^[A-Fa-f]=/.test(s) && s.includes(',')) {
+        return parseGeneralQuadraticKV(s, rawExpr.trim());
+    }
+    const eqCount = (s.match(/=/g) || []).length;
+    if (eqCount !== 1) throw new Error('方程需包含恰好一个等号 "="（一般式请用 A=..,B=.. 格式）');
+    const eqIdx = s.indexOf('=');
+    const lhs = s.slice(0, eqIdx), rhs = s.slice(eqIdx + 1);
+    if (!lhs || !rhs) throw new Error('等号两边不能为空');
+    const coeffs = extractQuadraticCoeffs(lhs, rhs);
+    if (coeffs) {
+        return quadraticToConic(coeffs.A, coeffs.B, coeffs.C, coeffs.D, coeffs.E, coeffs.F, rawExpr.trim());
+    }
+    const poly = extractPolynomialCoeffs(lhs, rhs, 6);
+    if (poly) {
+        return makeImplicitCurve(poly, rawExpr.trim());
+    }
+    return makeGeneralImplicitCurve(rawExpr.trim());
+}
+function makeGeneralImplicitCurve(rawExpr) {
+    let s = rawExpr.trim().replace(/\s+/g, '');
+    s = s.replace(/([a-zA-Z0-9_\)\.]+)!/g, '_fact($1)');
+    s = s.replace(/²/g, '^2').replace(/³/g, '^3').replace(/·/g, '*').replace(/×/g, '*');
+    s = s.replace(/\bpi\b/gi, '(' + Math.PI + ')');
+    s = s.replace(/(\d)([a-zA-Z(])/g, '$1*$2');
+    s = fixFunctionPowers(s);
+    const _funcs = ['sinh', 'cosh', 'tanh', 'asin', 'acos', 'atan', 'sin', 'cos', 'tan', 'exp', 'ln', 'lg', 'log', 'sqrt', 'zeta', 'gamma', 'abs', 'sign', 'floor', 'ceil', 'round', 'max', 'min', 'pow', 'log2', 'log10', '_fact'];
+    let _protected = s;
+    _funcs.forEach((name, i) => {
+        _protected = _protected.replace(new RegExp('\\b' + name + '\\b', 'g'), '\x00' + i + '\x00');
+    });
+    _protected = _protected.replace(/([a-zA-Z])([a-zA-Z])/g, '$1*$2');
+    s = _protected.replace(/\x00\d+\x00/g, m => _funcs[parseInt(m.replace(/\x00/g,''))]);
+    s = s.replace(/\^/g, '**');
+    const eqIdx = s.indexOf('=');
+    if (eqIdx === -1) throw new Error('通用隐式曲线需要一个等号');
+    const lhs = s.slice(0, eqIdx);
+    const rhs = s.slice(eqIdx + 1);
+    let fxy;
+    try {
+        fxy = new Function('x', 'y', `
+            "use strict";
+            const {sin,cos,tan,asin,acos,atan,exp,sqrt,abs,sign,floor,ceil,round,max,min,pow,atan2,sinh,cosh,tanh,PI,E} = Math;
+            const ln = Math.log;
+            const log = function() {
+                if (arguments.length === 1) return Math.log10(arguments[0]);
+                if (arguments.length === 2) return Math.log(arguments[1]) / Math.log(arguments[0]);
+                return NaN;
+            };
+            const lg = Math.log10;
+            const log2 = Math.log2;
+            const pi = PI, e = E;
+            const gamma = lanczosGamma;
+            const zeta = zetaFunction;
+            const _fact = ${_fact.toString()};
+            return (${lhs}) - (${rhs});
+        `);
+        const t = fxy(0, 0);
+        if (typeof t !== 'number') throw new Error('返回值非数字');
+    } catch(e) {
+        throw new Error('表达式错误: ' + e.message);
+    }
+    return {
+        kind: 'implicit',
+        degree: '任意',
+        fxy: fxy,
+        coeffMap: {},
+        expr: rawExpr,
+        info: '任意隐式曲线',
+        latex: exprToLatex(rawExpr)
+    };
+}
+function makeImplicitCurve(poly, rawExpr) {
+    const coeffMap = {};
+    for (const t of poly.terms) {
+        coeffMap[t.i + ',' + t.j] = t.coeff;
+    }
+    const parts = [];
+    for (const t of poly.terms) {
+        const c = t.coeff;
+        if (Math.abs(c) < 1e-12) continue;
+        let term = '';
+        if (t.i === 0 && t.j === 0) term = fmtNum(c);
+        else {
+            let sign = c < 0 ? '-' : '+';
+            let mag = Math.abs(c);
+            let magStr = (mag === 1) ? '' : fmtNum(mag) + '*';
+            let xs = t.i > 0 ? 'x' + (t.i > 1 ? '^' + t.i : '') : '';
+            let ys = t.j > 0 ? 'y' + (t.j > 1 ? '^' + t.j : '') : '';
+            let xy = '';
+            if (xs && ys) xy = xs + '*' + ys;
+            else xy = xs + ys;
+            term = sign + magStr + xy;
+        }
+        if (term) parts.push(term);
+    }
+    let eqStr = parts.length > 0 ? parts.join('') : '0';
+    if (eqStr.startsWith('+')) eqStr = eqStr.slice(1);
+    eqStr += ' = 0';
+    return {
+        kind: 'implicit',
+        degree: poly.degree,
+        fxy: poly.fxy,
+        coeffMap: coeffMap,
+        expr: rawExpr,
+        info: poly.degree + '次代数曲线',
+        latex: exprToLatex(rawExpr)
+    };
+}
+function extractQuadraticCoeffs(lhs, rhs) {
+    let fxy;
+    try {
+        fxy = new Function('x', 'y', `
+            "use strict";
+            const {sin,cos,tan,asin,acos,atan,exp,sqrt,abs,sign,floor,ceil,round,max,min,pow,atan2,sinh,cosh,tanh,PI,E} = Math;
+            const ln = Math.log; const log = function() { if (arguments.length === 1) return Math.log10(arguments[0]); if (arguments.length === 2) return Math.log(arguments[1]) / Math.log(arguments[0]); return NaN; };
+            const lg = Math.log10; const log2 = Math.log2;
+            const pi = PI, e = E; const gamma = lanczosGamma; const zeta = zetaFunction;
+            const _fact = ${_fact.toString()};
+            return (${lhs}) - (${rhs});
+        `);
+        const t0 = fxy(0, 0);
+        if (typeof t0 !== 'number') return null;
+    } catch(e) { return null; }
+    const samplePts = [[0,0],[1,0],[0,1],[1,1],[2,3],[3,-2]];
+    const M = [], b = [];
+    for (const [x, y] of samplePts) {
+        let v;
+        try { v = fxy(x, y); } catch(e) { return null; }
+        if (typeof v !== 'number' || !isFinite(v)) return null;
+        M.push([x*x, x*y, y*y, x, y, 1]);
+        b.push(v);
+    }
+    const sol = solveLinear6(M, b);
+    if (!sol) return null;
+    let [A, B, C, D, E, F] = sol;
+    const testPts = [[-1,2],[2,-1],[0.5,1.5],[-2,-3],[1.5,-0.5]];
+    const TOL = 1e-6;
+    const scale = Math.abs(A)+Math.abs(B)+Math.abs(C)+Math.abs(D)+Math.abs(E)+Math.abs(F)+1e-10;
+    for (const [x, y] of testPts) {
+        let fv;
+        try { fv = fxy(x, y); } catch(e) { return null; }
+        if (typeof fv !== 'number' || !isFinite(fv)) return null;
+        const pred = A*x*x + B*x*y + C*y*y + D*x + E*y + F;
+        if (Math.abs(fv - pred) > TOL * scale + TOL) return null;
+    }
+    if (Math.abs(A) < 1e-12 && Math.abs(B) < 1e-12 && Math.abs(C) < 1e-12
+        && Math.abs(D) < 1e-12 && Math.abs(E) < 1e-12) {
+        return null;
+    }
+    return { A, B, C, D, E, F };
+}
+function extractPolynomialCoeffs(lhs, rhs, maxDegree) {
+    let fxy;
+    try {
+        fxy = new Function('x', 'y', `
+            "use strict";
+            const {sin,cos,tan,asin,acos,atan,exp,sqrt,abs,sign,floor,ceil,round,max,min,pow,atan2,sinh,cosh,tanh,PI,E} = Math;
+            const ln = Math.log; const log = function() { if (arguments.length === 1) return Math.log10(arguments[0]); if (arguments.length === 2) return Math.log(arguments[1]) / Math.log(arguments[0]); return NaN; };
+            const lg = Math.log10; const log2 = Math.log2;
+            const pi = PI, e = E; const gamma = lanczosGamma; const zeta = zetaFunction;
+            const _fact = ${_fact.toString()};
+            return (${lhs}) - (${rhs});
+        `);
+        const t0 = fxy(0, 0);
+        if (typeof t0 !== 'number') return null;
+    } catch(e) { return null; }
+    for (let deg = 2; deg <= maxDegree; deg++) {
+        const terms = [];
+        for (let i = 0; i <= deg; i++) {
+            for (let j = 0; j <= deg - i; j++) {
+                if (i === 0 && j === 0) terms.push({ i: 0, j: 0 });
+                else terms.push({ i: i, j: j });
+            }
+        }
+        const nTerms = terms.length;
+        const samplePts = generateSamplePoints(nTerms);
+        const M = [], b = [];
+        let valid = true;
+        for (const [x, y] of samplePts) {
+            let v;
+            try { v = fxy(x, y); } catch(e) { valid = false; break; }
+            if (typeof v !== 'number' || !isFinite(v)) { valid = false; break; }
+            const row = terms.map(t => Math.pow(x, t.i) * Math.pow(y, t.j));
+            M.push(row);
+            b.push(v);
+        }
+        if (!valid) continue;
+        const sol = solveLinear(M, b, nTerms);
+        if (!sol) continue;
+        const testPts = generateSamplePoints(Math.min(nTerms, 12), true);
+        const ABS_TOL = 1e-6;
+        const REL_TOL = 1e-7;
+        let pass = true;
+        for (const [x, y] of testPts) {
+            let fv;
+            try { fv = fxy(x, y); } catch(e) { pass = false; break; }
+            if (typeof fv !== 'number' || !isFinite(fv)) { pass = false; break; }
+            let pred = 0;
+            for (let k = 0; k < terms.length; k++) {
+                pred += sol[k] * Math.pow(x, terms[k].i) * Math.pow(y, terms[k].j);
+            }
+            const resid = Math.abs(fv - pred);
+            const scale = Math.max(Math.abs(fv), Math.abs(pred), 1);
+            if (resid > ABS_TOL + REL_TOL * scale) { pass = false; break; }
+        }
+        if (!pass) continue;
+        let maxLowerDeg = 0;
+        for (let k = 0; k < terms.length; k++) {
+            if (terms[k].i + terms[k].j < deg) {
+                maxLowerDeg = Math.max(maxLowerDeg, Math.abs(sol[k]));
+            }
+        }
+        let hasTopDegree = false;
+        const topThresh = Math.max(1e-8, 1e-6 * maxLowerDeg);
+        for (let k = 0; k < terms.length; k++) {
+            if (terms[k].i + terms[k].j === deg && Math.abs(sol[k]) > topThresh) {
+                hasTopDegree = true; break;
+            }
+        }
+        if (!hasTopDegree) continue;
+        const termCoeffs = terms.map((t, k) => ({ i: t.i, j: t.j, coeff: sol[k] }));
+        return { degree: deg, terms: termCoeffs, fxy: fxy };
+    }
+    return null;
+}
+function generateSamplePoints(n, alt) {
+    const irratBase = [Math.SQRT2, Math.SQRT1_2, Math.sqrt(3), Math.sqrt(5), Math.sqrt(7)];
+    const irratBase2 = [Math.sqrt(11), Math.sqrt(13), Math.sqrt(17), Math.sqrt(19), Math.sqrt(23)];
+    const pts = [];
+    for (let i = 0; i < 200; i++) {
+        const b1 = irratBase[i % irratBase.length];
+        const b2 = irratBase2[i % irratBase2.length];
+        const sign1 = (i % 2 === 0) ? 1 : -1;
+        const sign2 = (i % 3 === 0) ? -1 : 1;
+        const sx = sign1 * (0.5 + 1.7 * (b1 - 1) + 0.13 * (i % 7));
+        const sy = sign2 * (0.5 + 1.7 * (b2 - 1) + 0.17 * (i % 5));
+        pts.push([Math.round(sx * 1000) / 1000, Math.round(sy * 1000) / 1000]);
+    }
+    if (alt) return pts.slice(100, 100 + n);
+    return pts.slice(0, n);
+}
+function solveLinear6(M, b) {
+    const n = 6;
+    const aug = M.map((row, i) => [...row, b[i]]);
+    for (let col = 0; col < n; col++) {
+        let maxRow = col, maxVal = Math.abs(aug[col][col]);
+        for (let r = col + 1; r < n; r++) {
+            if (Math.abs(aug[r][col]) > maxVal) { maxVal = Math.abs(aug[r][col]); maxRow = r; }
+        }
+        if (maxVal < 1e-12) return null;
+        if (maxRow !== col) { [aug[col], aug[maxRow]] = [aug[maxRow], aug[col]]; }
+        const pivot = aug[col][col];
+        for (let r = 0; r < n; r++) {
+            if (r === col) continue;
+            const factor = aug[r][col] / pivot;
+            for (let c = col; c <= n; c++) aug[r][c] -= factor * aug[col][c];
+        }
+    }
+    const x = new Array(n);
+    for (let i = 0; i < n; i++) x[i] = aug[i][n] / aug[i][i];
+    return x;
+}
+function solveLinear(M, b, n) {
+    const aug = M.map((row, i) => [...row, b[i]]);
+    for (let col = 0; col < n; col++) {
+        let maxRow = col, maxVal = Math.abs(aug[col][col]);
+        for (let r = col + 1; r < n; r++) {
+            if (Math.abs(aug[r][col]) > maxVal) { maxVal = Math.abs(aug[r][col]); maxRow = r; }
+        }
+        if (maxVal < 1e-12) return null;
+        if (maxRow !== col) { [aug[col], aug[maxRow]] = [aug[maxRow], aug[col]]; }
+        const pivot = aug[col][col];
+        for (let c = col; c <= n; c++) aug[col][c] /= pivot;
+        for (let r = 0; r < n; r++) {
+            if (r === col) continue;
+            const factor = aug[r][col];
+            for (let c = col; c <= n; c++) aug[r][c] -= factor * aug[col][c];
+        }
+    }
+    const x = new Array(n);
+    for (let i = 0; i < n; i++) x[i] = aug[i][n];
+    return x;
+}
+function parseGeneralQuadraticKV(s, rawExpr) {
+    const pairs = s.split(',');
+    const coeffs = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
+    for (const p of pairs) {
+        const eqIdx = p.indexOf('=');
+        if (eqIdx < 0) continue;
+        const key = p.slice(0, eqIdx).trim().toUpperCase();
+        const val = p.slice(eqIdx + 1).trim();
+        if (coeffs.hasOwnProperty(key)) {
+            try {
+                let code = val.replace(/\^/g, '**').replace(/\bpi\b/gi, '(' + Math.PI + ')');
+                const fn = new Function('"use strict"; const {sin,cos,tan,sqrt,abs,exp,log} = Math; return (' + code + ');');
+                coeffs[key] = fn();
+            } catch(e) {
+                throw new Error(`系数 ${key}="${val}" 无效`);
+            }
+        }
+    }
+    return quadraticToConic(coeffs.A, coeffs.B, coeffs.C, coeffs.D, coeffs.E, coeffs.F, rawExpr);
+}
+function quadraticToConic(A, B, C, D, E, F, rawExpr) {
+    const disc = B * B - 4 * A * C;
+    const label = rawExpr || 'Ax²+Bxy+Cy²+Dx+Ey+F=0';
+    const _quadScale = Math.abs(A) + Math.abs(B) + Math.abs(C) + 1e-10;
+    const EPS_DISC = 1e-9 * _quadScale;
+    const EPS_AXIS = 1e-9 * _quadScale;
+    let theta = 0;
+    if (Math.abs(B) > EPS_AXIS) {
+        theta = 0.5 * Math.atan2(B, A - C);
+    }
+    const cosT = Math.cos(theta), sinT = Math.sin(theta);
+    const cos2 = cosT * cosT, sin2 = sinT * sinT, sc = sinT * cosT;
+    const A2 = A * cos2 + B * sc + C * sin2;
+    const C2 = A * sin2 - B * sc + C * cos2;
+    const Dp = D * cosT + E * sinT;
+    const Ep = -D * sinT + E * cosT;
+    const rot = (xr, yr) => ({
+        x: xr * cosT - yr * sinT,
+        y: xr * sinT + yr * cosT
+    });
+    if (disc < -EPS_DISC) {
+        const det = 2 * A * 2 * C - B * B;
+        let h = 0, k = 0;
+        if (Math.abs(det) > 1e-10) {
+            h = (B * E - 2 * C * D) / det;
+            k = (B * D - 2 * A * E) / det;
+        }
+        const Fp = A * h * h + B * h * k + C * k * k + D * h + E * k + F;
+        if (Math.abs(Fp) < 1e-10) throw new Error('退化椭圆（点）');
+        const a2 = -Fp / A2, b2 = -Fp / C2;
+        if (a2 <= 0 || b2 <= 0) throw new Error('虚椭圆（无实解）');
+        const a = Math.sqrt(a2), b = Math.sqrt(b2);
+        const fnOrig = (xr, yr) => ({
+            x: h + xr * cosT - yr * sinT,
+            y: k + xr * sinT + yr * cosT
+        });
+        return {
+            kind: 'conic', type: 'ellipse',
+            paramFn: (t) => fnOrig(a * Math.cos(t), b * Math.sin(t)),
+            tRange: [0, 2 * Math.PI],
+            info: `椭圆(一般式) a=${fmtNum(a)} b=${fmtNum(b)}`,
+            expr: label,
+            coeffs: { A, B, C, D, E, F },
+            latex: exprToLatex(label)
+        };
+    } else if (disc > EPS_DISC) {
+        const det = 2 * A * 2 * C - B * B;
+        let h = 0, k = 0;
+        if (Math.abs(det) > 1e-10) {
+            h = (B * E - 2 * C * D) / det;
+            k = (B * D - 2 * A * E) / det;
+        }
+        const Fp = A * h * h + B * h * k + C * k * k + D * h + E * k + F;
+        if (Math.abs(Fp) < 1e-10) throw new Error('退化双曲线（两直线）');
+        const a2 = Math.abs(Fp / A2);
+        const b2 = Math.abs(Fp / C2);
+        const a = Math.sqrt(a2), b = Math.sqrt(b2);
+        const horizontal = (Fp * A2 < 0);
+        const fnOrig = (xr, yr) => ({
+            x: h + xr * cosT - yr * sinT,
+            y: k + xr * sinT + yr * cosT
+        });
+        return {
+            kind: 'conic', type: horizontal ? 'hyperbola-h' : 'hyperbola-v',
+            branches: horizontal ? [
+                (t) => fnOrig(a * Math.cosh(t), b * Math.sinh(t)),
+                (t) => fnOrig(-a * Math.cosh(t), b * Math.sinh(t))
+            ] : [
+                (t) => fnOrig(b * Math.sinh(t), a * Math.cosh(t)),
+                (t) => fnOrig(b * Math.sinh(t), -a * Math.cosh(t))
+            ],
+            tRange: [-5, 5],
+            info: `双曲线(一般式) a=${fmtNum(a)} b=${fmtNum(b)}`,
+            expr: label,
+            coeffs: { A, B, C, D, E, F },
+            latex: exprToLatex(label)
+        };
+    } else {
+        if (Math.abs(A2) < EPS_AXIS && Math.abs(C2) > EPS_AXIS) {
+            if (Math.abs(Dp) < EPS_AXIS) throw new Error('退化抛物线');
+            const yShift = Ep / (2 * C2);
+            const xOffset = (Ep * Ep / (4 * C2) - F) / Dp;
+            const coeff = -C2 / Dp;
+            const tMax = 15;
+            return {
+                kind: 'conic', type: 'parabola',
+                paramFn: (t) => {
+                    const xp = coeff * t * t + xOffset;
+                    const yp = t - yShift;
+                    return rot(xp, yp);
+                },
+                tRange: [-tMax, tMax],
+                info: `抛物线(一般式)`,
+                expr: label,
+                coeffs: { A, B, C, D, E, F },
+                latex: exprToLatex(label)
+            };
+        } else if (Math.abs(C2) < EPS_AXIS && Math.abs(A2) > EPS_AXIS) {
+            if (Math.abs(Ep) < EPS_AXIS) throw new Error('退化抛物线');
+            const xShift = Dp / (2 * A2);
+            const yOffset = (Dp * Dp / (4 * A2) - F) / Ep;
+            const coeff = -A2 / Ep;
+            const tMax = 15;
+            return {
+                kind: 'conic', type: 'parabola',
+                paramFn: (t) => {
+                    const xp = t - xShift;
+                    const yp = coeff * t * t + yOffset;
+                    return rot(xp, yp);
+                },
+                tRange: [-tMax, tMax],
+                info: `抛物线(一般式)`,
+                expr: label,
+                coeffs: { A, B, C, D, E, F },
+                latex: exprToLatex(label)
+            };
+        } else {
+            throw new Error('无法确定圆锥曲线类型');
+        }
+    }
+}
+function det3(m) {
+    return m[0]*(m[4]*m[8]-m[5]*m[7])
+         - m[1]*(m[3]*m[8]-m[5]*m[6])
+         + m[2]*(m[3]*m[7]-m[4]*m[6]);
+}
+/* ==================== 3D 向量数学 ==================== */
+function vec3Sub(a, b) { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
+function vec3Cross(a, b) { return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+function vec3Dot(a, b) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
+function vec3Normalize(v) {
+    const n = Math.hypot(v[0], v[1], v[2]);
+    return n < 1e-12 ? [v[0], v[1], v[2]] : [v[0]/n, v[1]/n, v[2]/n];
+}
+function sphericalToEye(d, theta, phi) {
+    const th = theta * Math.PI / 180;
+    const ph = phi * Math.PI / 180;
+    return [
+        d * Math.sin(th) * Math.cos(ph),
+        d * Math.sin(th) * Math.sin(ph),
+        d * Math.cos(th)
+    ];
+}
+function cameraToHomography(eye, center, up, focal) {
+    const fwd    = vec3Normalize(vec3Sub(center, eye));
+    const right  = vec3Normalize(vec3Cross(fwd, up));
+    const trueUp = vec3Cross(right, fwd);
+    const t0 = -(right[0]*eye[0]  + right[1]*eye[1]  + right[2]*eye[2]);
+    const t1 = -(trueUp[0]*eye[0] + trueUp[1]*eye[1] + trueUp[2]*eye[2]);
+    const t2 = -(fwd[0]*eye[0]   + fwd[1]*eye[1]   + fwd[2]*eye[2]);
+    const H = [
+        focal * right[0],  focal * right[1],  focal * t0,
+        focal * trueUp[0], focal * trueUp[1], focal * t1,
+        fwd[0],            fwd[1],            t2
+    ];
+    const w = H[8];
+    if (Math.abs(w) > 1e-12) {
+        for (let i = 0; i < 9; i++) H[i] /= w;
+    }
+    return H;
+}
+function applyCameraToMatrix() {
+    const { d, theta, phi, focal } = State.camera;
+    const eye = sphericalToEye(d, theta, phi);
+    const H = cameraToHomography(eye, [0, 0, 0], [0, 1, 0], focal);
+    for (let i = 0; i < 9; i++) State.matrix[i] = H[i];
+    for (let i = 0; i < 9; i++) {
+        const numEl = document.getElementById('m-' + i);
+        const rngEl = document.getElementById('r-' + i);
+        if (numEl) numEl.value = H[i].toFixed(3);
+        if (rngEl) rngEl.value = Math.max(-3, Math.min(3, H[i]));
+    }
+    const det = det3(State.matrix);
+    const detEl = document.getElementById('det-value');
+    if (detEl) detEl.textContent = det.toFixed(3);
+}
+const cameraPresets = {
+    top:       { theta: 0,  phi: 0,  d: 10,  focal: 5,    desc: '正俯视：θ=0°，无透视，圆保持圆' },
+    shallow:   { theta: 30, phi: 0,  d: 10,  focal: 5,    desc: '浅俯视：θ=30°，圆→扁椭圆' },
+    side:      { theta: 55, phi: 30, d: 12,  focal: 6,    desc: '侧斜视：θ=55° φ=30°，双灭点' },
+    low:       { theta: 75, phi: 45, d: 15,  focal: 7.5,  desc: '低角度：θ=75° φ=45°，强透视压缩' },
+    extreme:   { theta: 83, phi: 0,  d: 5,   focal: 2.5,  desc: '极端透视：θ=83° d=5，极强透视' },
+    parabolic: { theta: 89, phi: 0,  d: 2,   focal: 1,    desc: '近临界视角：θ=89° d=2，灭线贴近圆周' },
+    hyperbolic:{ theta: 89, phi: 0,  d: 0.5, focal: 0.25, desc: '极端透视：θ=89° d=0.5，灭线穿过圆周' },
+};
+function syncFocalFromD() {
+    if (!State.camera.focalAuto) return;
+    State.camera.focal = State.camera.d / 2;
+}
+function updateCameraSliders() {
+    const { d, theta, phi, focal } = State.camera;
+    const tEl = document.getElementById('cam-theta');
+    const pEl = document.getElementById('cam-phi');
+    const dEl = document.getElementById('cam-d');
+    const fEl = document.getElementById('cam-focal');
+    if (tEl) tEl.value = theta;
+    if (pEl) pEl.value = phi;
+    if (dEl) dEl.value = d;
+    if (fEl) fEl.value = focal;
+    const tv = document.getElementById('cam-theta-val');
+    const pv = document.getElementById('cam-phi-val');
+    const dv = document.getElementById('cam-d-val');
+    const fv = document.getElementById('cam-focal-val');
+    if (tv) tv.textContent = theta.toFixed(0) + '°';
+    if (pv) pv.textContent = phi.toFixed(0) + '°';
+    if (dv) dv.textContent = d.toFixed(1);
+    if (fv) fv.textContent = focal.toFixed(2);
+}
+function onCameraParamChange() {
+    if (!State.camera.enabled) return;
+    applyCameraToMatrix();
+    if (cameraView3D) cameraView3D.render();
+    updateCurveInfoPanel();
+    redrawAll();
+}
+function toggleCameraMode() {
+    State.camera.enabled = !State.camera.enabled;
+    const panel = document.getElementById('camera-panel');
+    const btn = document.getElementById('mode-toggle');
+    if (State.camera.enabled) {
+        panel.classList.remove('disabled');
+        btn.textContent = '切换到矩阵模式';
+        btn.classList.add('active');
+        document.querySelectorAll('.matrix-cell input').forEach(el => el.disabled = true);
+        document.querySelectorAll('.preset-btn').forEach(el => el.disabled = true);
+        applyCameraToMatrix();
+    } else {
+        panel.classList.add('disabled');
+        btn.textContent = '切换到相机模式';
+        btn.classList.remove('active');
+        document.querySelectorAll('.matrix-cell input').forEach(el => el.disabled = false);
+        document.querySelectorAll('.preset-btn').forEach(el => el.disabled = false);
+    }
+    if (cameraView3D) cameraView3D.render();
+    redrawAll();
+}
+/* ==================== 全局状态 ==================== */
+const State = {
+    functions: [],
+    matrix: [1,0,0, 0,1,0, 0,0,1],
+    camera: {
+        d: 10, theta: 30, phi: 0, focal: 5,
+        focalAuto: true, enabled: false,
+    },
+    view: {
+        scale: 50, ox: 0, oy: 0,
+        showGrid: true, showAxes: true, showLabels: true,
+        showCurvePoints: false, showROI: false,
+        sampleCount: 500,
+        displayMode: 'split'
+    },
+    colors: [
+        '#cc0000', '#0066cc', '#e67300', '#6c3d91',
+        '#008060', '#b8860b', '#dc143c', '#1e90ff'
+    ],
+    nextFuncId: 1,
+    selectedCurveId: null,
+};
+/* ==================== 射影变换数学核心 ==================== */
+const EPS_W = 1e-6;
+function getMatrix2D() {
+    const m = State.matrix;
+    return [[m[0],m[1],m[2]], [m[3],m[4],m[5]], [m[6],m[7],m[8]]];
+}
+function transformPoint(H, x, y) {
+    const X = H[0][0]*x + H[0][1]*y + H[0][2];
+    const Y = H[1][0]*x + H[1][1]*y + H[1][2];
+    const W = H[2][0]*x + H[2][1]*y + H[2][2];
+    if (Math.abs(W) < EPS_W) {
+        return { x: Infinity, y: Infinity, W: W, atInfinity: true };
+    }
+    return { x: X/W, y: Y/W, W: W, atInfinity: false };
+}
+/* ==================== 射影视角自适应渲染器 ==================== */
+function drawProjectiveCurve(sampleFn, tRange, N, ctx, cx, cy, s, H, width, height, color, lineWidth) {
+    const W_NEAR   = 0.03;
+    const MAX_PX   = 18;
+    const MAX_DEPTH = 9;
+    const MARGIN   = 80;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth || 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    let inSeg = false;
+    const [tMin, tMax] = tRange;
+    const dt = (tMax - tMin) / N;
+    function xform(t) {
+        let pt;
+        try { pt = sampleFn(t); } catch(e) { return null; }
+        if (!pt || !isFinite(pt.x) || !isFinite(pt.y)) return null;
+        return transformPoint(H, pt.x, pt.y);
+    }
+    function offScreen(sx, sy) {
+        return sx < -MARGIN || sx > width + MARGIN || sy < -MARGIN || sy > height + MARGIN;
+    }
+    function breakSeg() {
+        if (inSeg) { ctx.stroke(); ctx.beginPath(); inSeg = false; }
+    }
+    function startSeg(sx, sy) {
+        ctx.moveTo(sx, sy);
+        inSeg = true;
+    }
+    function recurse(t1, p1, t2, p2, depth) {
+        if (p1.W * p2.W < 0) { breakSeg(); return; }
+        const sx1 = cx + p1.x * s, sy1 = cy - p1.y * s;
+        const sx2 = cx + p2.x * s, sy2 = cy - p2.y * s;
+        if (offScreen(sx1, sy1) && offScreen(sx2, sy2)) { breakSeg(); return; }
+        const ddx = sx2 - sx1, ddy = sy2 - sy1;
+        if (ddx*ddx + ddy*ddy > MAX_PX * MAX_PX && depth < MAX_DEPTH) {
+            const tMid = (t1 + t2) / 2;
+            const pMid = xform(tMid);
+            if (pMid === null || pMid.atInfinity || Math.abs(pMid.W) < W_NEAR) { breakSeg(); return; }
+            if (p1.W * pMid.W < 0) { breakSeg(); recurse(tMid, pMid, t2, p2, depth + 1); return; }
+            if (pMid.W * p2.W < 0) { recurse(t1, p1, tMid, pMid, depth + 1); breakSeg(); return; }
+            recurse(t1, p1, tMid, pMid, depth + 1);
+            recurse(tMid, pMid, t2, p2, depth + 1);
+            return;
+        }
+        if (!inSeg) { startSeg(sx1, sy1); }
+        ctx.lineTo(sx2, sy2);
+    }
+    let prevT = null, prevP = null;
+    for (let i = 0; i <= N; i++) {
+        const t = tMin + i * dt;
+        const p = xform(t);
+        if (p === null || p.atInfinity || Math.abs(p.W) < W_NEAR) {
+            breakSeg();
+            prevT = null; prevP = null;
+            continue;
+        }
+        if (prevP !== null) {
+            if (prevP.W * p.W > 0) {
+                recurse(prevT, prevP, t, p, 0);
+            } else {
+                breakSeg();
+            }
+        }
+        if (!inSeg) {
+            const sx = cx + p.x * s, sy = cy - p.y * s;
+            if (!offScreen(sx, sy)) startSeg(sx, sy);
+        }
+        prevT = t; prevP = p;
+    }
+    if (inSeg) ctx.stroke();
+}
+function computeVanishingPoint(H, dx, dy) {
+    const X = H[0][0]*dx + H[0][1]*dy;
+    const Y = H[1][0]*dx + H[1][1]*dy;
+    const W = H[2][0]*dx + H[2][1]*dy;
+    if (Math.abs(W) < EPS_W) return null;
+    return { x: X/W, y: Y/W };
+}
+function computeVanishingLine(H) {
+    if (Math.abs(H[2][0]) < EPS_W && Math.abs(H[2][1]) < EPS_W) return null;
+    return { a: H[2][0], b: H[2][1], c: H[2][2] };
+}
+/* ==================== 射影变换下曲线「像」的类型分析 ==================== */
+function transposeMatrix3(M) {
+    return [
+        [M[0][0], M[1][0], M[2][0]],
+        [M[0][1], M[1][1], M[2][1]],
+        [M[0][2], M[1][2], M[2][2]]
+    ];
+}
+function matMul3(A, B) {
+    const C = [[0,0,0],[0,0,0],[0,0,0]];
+    for (let i = 0; i < 3; i++)
+        for (let j = 0; j < 3; j++) {
+            let s = 0;
+            for (let k = 0; k < 3; k++) s += A[i][k] * B[k][j];
+            C[i][j] = s;
+        }
+    return C;
+}
+function invertMatrix3(M) {
+    const m = M;
+    const c00 = m[1][1]*m[2][2] - m[1][2]*m[2][1];
+    const c01 = -(m[1][0]*m[2][2] - m[1][2]*m[2][0]);
+    const c02 = m[1][0]*m[2][1] - m[1][1]*m[2][0];
+    const c10 = -(m[0][1]*m[2][2] - m[0][2]*m[2][1]);
+    const c11 = m[0][0]*m[2][2] - m[0][2]*m[2][0];
+    const c12 = -(m[0][0]*m[2][1] - m[0][1]*m[2][0]);
+    const c20 = m[0][1]*m[1][2] - m[0][2]*m[1][1];
+    const c21 = -(m[0][0]*m[1][2] - m[0][2]*m[1][0]);
+    const c22 = m[0][0]*m[1][1] - m[0][1]*m[1][0];
+    const det = m[0][0]*c00 + m[0][1]*c01 + m[0][2]*c02;
+    if (Math.abs(det) < 1e-12) return null;
+    const inv = 1 / det;
+    return [
+        [c00*inv, c10*inv, c20*inv],
+        [c01*inv, c11*inv, c21*inv],
+        [c02*inv, c12*inv, c22*inv]
+    ];
+}
+function fmtCoeff(x) {
+    if (Math.abs(x) < 1e-10) return '0';
+    const v = Math.abs(x) < 1e-4 ? x.toExponential(3) : (Math.round(x * 1e6) / 1e6);
+    return String(v);
+}
+function transformConicCoeffs(coeffs, H) {
+    const { A, B, C, D, E, F } = coeffs;
+    const M = [
+        [A, B/2, D/2],
+        [B/2, C, E/2],
+        [D/2, E/2, F]
+    ];
+    const Hinv = invertMatrix3(H);
+    if (!Hinv) return null;
+    const HinvT = transposeMatrix3(Hinv);
+    const Mp = matMul3(matMul3(HinvT, M), Hinv);
+    return {
+        A: Mp[0][0],
+        B: 2 * Mp[0][1],
+        C: Mp[1][1],
+        D: 2 * Mp[0][2],
+        E: 2 * Mp[1][2],
+        F: Mp[2][2]
+    };
+}
+function classifyConic(coeffs, expr) {
+    const { A, B, C, D, E, F } = coeffs;
+    const disc = B * B - 4 * A * C;
+    const _scale = Math.abs(A) + Math.abs(B) + Math.abs(C) + 1e-10;
+    const EPS = 1e-9 * _scale;
+    const fmt = (v) => fmtCoeff(v);
+    const exprStr = `${fmt(A)}x^2 + ${fmt(B)}xy + ${fmt(C)}y^2 + ${fmt(D)}x + ${fmt(E)}y + ${fmt(F)} = 0`;
+    if (Math.abs(disc) < EPS) {
+        return { type: 'parabola', badge: '抛物线', detail: `B^2-4AC = ${fmt(disc)} \\approx 0`, expr: exprStr };
+    } else if (disc < 0) {
+        if (Math.abs(A - C) < EPS && Math.abs(B) < EPS) {
+            return { type: 'circle', badge: '圆', detail: `B^2-4AC = ${fmt(disc)} < 0, A=C, B=0`, expr: exprStr };
+        }
+        return { type: 'ellipse', badge: '椭圆', detail: `B^2-4AC = ${fmt(disc)} < 0`, expr: exprStr };
+    } else {
+        return { type: 'hyperbola', badge: '双曲线', detail: `B^2-4AC = ${fmt(disc)} > 0`, expr: exprStr };
+    }
+}
+function getProjectiveImageType(curveObj, H) {
+    const isIdentity = H && Math.abs(H[2][0]) < 1e-9 && Math.abs(H[2][1]) < 1e-9
+        && Math.abs(H[0][0] - 1) < 1e-9 && Math.abs(H[1][1] - 1) < 1e-9
+        && Math.abs(H[0][1]) < 1e-9 && Math.abs(H[1][0]) < 1e-9
+        && Math.abs(H[0][2]) < 1e-9 && Math.abs(H[1][2]) < 1e-9
+        && Math.abs(H[2][2] - 1) < 1e-9;
+    if (!curveObj) return { visible: false };
+    if (!H) return { visible: false };
+    const Hinv = invertMatrix3(H);
+    if (!Hinv) return { visible: true, type: 'singular', badge: '矩阵奇异', detail: 'H 不可逆，无定义', expr: '—' };
+    if (curveObj.kind === 'conic' && curveObj.coeffs) {
+        const imgCoeffs = transformConicCoeffs(curveObj.coeffs, H);
+        if (!imgCoeffs) return { visible: true, type: 'singular', badge: '矩阵奇异', detail: '—', expr: '—' };
+        const info = classifyConic(imgCoeffs, curveObj.expr);
+        info.visible = true;
+        if (isIdentity) info.detail += ' \\cdot H \\approx I（像 = 原像）';
+        return info;
+    }
+    if (curveObj.kind === 'implicit') {
+        const d = curveObj.degree;
+        const note = isIdentity ? ' \\cdot H \\approx I（像 = 原像）' : ' \\cdot 次数在射影变换下保持';
+        let intersectVanishLine = false;
+        if (!isIdentity) {
+            const H31 = H[2][0], H32 = H[2][1], H33 = H[2][2];
+            if (Math.abs(H31) > 1e-9 || Math.abs(H32) > 1e-9) {
+                for (let x = -10; x <= 10; x += 0.1) {
+                    let y;
+                    if (Math.abs(H32) > 1e-9) {
+                        y = -(H31 * x + H33) / H32;
+                    } else {
+                        const xv = -H33 / H31;
+                        for (let yy = -10; yy <= 10; yy += 0.1) {
+                            try {
+                                const v = curveObj.fxy(xv, yy);
+                                if (isFinite(v) && Math.abs(v) < 0.1) { intersectVanishLine = true; break; }
+                            } catch(e) {}
+                        }
+                        break;
+                    }
+                    try {
+                        const v = curveObj.fxy(x, y);
+                        if (isFinite(v) && Math.abs(v) < 0.1) { intersectVanishLine = true; break; }
+                    } catch(e) {}
+                }
+            }
+        }
+        if (intersectVanishLine) {
+            return { visible: true, type: 'implicit', badge: '带渐近线的隐式像', detail: `原曲线穿过灭线，射影后产生渐近线分支`, expr: curveObj.expr };
+        }
+        return { visible: true, type: 'implicit', badge: `${d}次代数曲线`, detail: `射影变换不改变代数曲线的次数${note}`, expr: curveObj.expr };
+    }
+    if (curveObj.kind === 'function' || (!curveObj.kind && curveObj.fn)) {
+        let intersectVanishLine = false;
+        if (!isIdentity) {
+            const H31 = H[2][0], H32 = H[2][1], H33 = H[2][2];
+            if (Math.abs(H31) > 1e-9 || Math.abs(H32) > 1e-9) {
+                let prevW = null;
+                for (let x = -10; x <= 10; x += 0.1) {
+                    try {
+                        const y = curveObj.fn(x);
+                        if (isFinite(y)) {
+                            const w = H31 * x + H32 * y + H33;
+                            if (prevW !== null && prevW * w < 0) { intersectVanishLine = true; break; }
+                            prevW = w;
+                        }
+                    } catch(e) {}
+                }
+            }
+        }
+        if (intersectVanishLine) {
+            return {
+                visible: true, type: 'function-image', badge: '带渐近线的曲线像',
+                detail: isIdentity ? 'H \\approx I：像 = 原函数' : '经 H 变换后不再是函数图像，且存在渐近线',
+                expr: curveObj.expr
+            };
+        }
+        return {
+            visible: true, type: 'function-image', badge: '曲线像',
+            detail: isIdentity ? 'H \\approx I：像 = 原函数 y=f(x)' : '经 H 变换后一般不再是 y=f(x) 的函数图像',
+            expr: curveObj.expr
+        };
+    }
+    return { visible: false };
+}
+/* ==================== 曲线类型判断与选中 ==================== */
+function getCurveTypeInfo(curveObj) {
+    if (!curveObj) return { type: 'none', badge: '', detail: '', expr: '' };
+    if (curveObj.kind === 'function' || (!curveObj.kind && curveObj.fn)) {
+        return { type: 'function', badge: '显式函数', detail: 'y = f(x)', expr: curveObj.expr };
+    }
+    if (curveObj.kind === 'conic') {
+        const c = curveObj.coeffs;
+        if (!c) return { type: 'conic', badge: curveObj.info || '圆锥曲线', detail: '', expr: curveObj.expr };
+        const { A, B, C } = c;
+        const disc = B * B - 4 * A * C;
+        const _scale = Math.abs(A) + Math.abs(B) + Math.abs(C) + 1e-10;
+        const EPS = 1e-9 * _scale;
+        if (Math.abs(disc) < EPS) {
+            return { type: 'parabola', badge: '抛物线', detail: 'B^2-4AC = 0（判别式为零）', expr: curveObj.expr };
+        } else if (disc < 0) {
+            if (Math.abs(A - C) < EPS && Math.abs(B) < EPS) {
+                return { type: 'circle', badge: '圆', detail: 'A=C, B=0（判别式 < 0）', expr: curveObj.expr };
+            }
+            return { type: 'ellipse', badge: '椭圆', detail: 'B^2-4AC = ' + disc.toFixed(4) + ' < 0', expr: curveObj.expr };
+        } else {
+            return { type: 'hyperbola', badge: '双曲线', detail: 'B^2-4AC = ' + disc.toFixed(4) + ' > 0', expr: curveObj.expr };
+        }
+    }
+    if (curveObj.kind === 'implicit') {
+        const d = curveObj.degree;
+        let extra = '';
+        if (d === '任意') extra = '（包含超越函数，如 sin/cos/exp 等）';
+        else if (d === 3) extra = '（三次曲线，如结线/环索线等）';
+        else if (d === 4) extra = '（四次曲线）';
+        else extra = '（' + d + '次代数曲线）';
+        return { type: 'implicit', badge: d + '次代数曲线', detail: '最高次数 = ' + d + extra, expr: curveObj.expr };
+    }
+    return { type: 'unknown', badge: '未知', detail: '', expr: curveObj.expr || '' };
+}
+function renderKatex(el, latex) {
+    if (!el || !window.katex) return;
+    try {
+        katex.render(latex, el, { throwOnError: false, displayMode: false });
+    } catch(e) {
+        el.textContent = latex;
+    }
+}
+function updateCurveInfoPanel() {
+    const panel = document.getElementById('curve-info-panel');
+    if (!panel) return;
+    if (State.selectedCurveId === null) {
+        panel.classList.remove('show');
+        return;
+    }
+    const curve = State.functions.find(f => f.id === State.selectedCurveId);
+    if (!curve || !curve.visible) {
+        panel.classList.remove('show');
+        State.selectedCurveId = null;
+        return;
+    }
+    const info = getCurveTypeInfo(curve);
+    panel.classList.add('show');
+    const typeEl = document.getElementById('curve-info-type');
+    const exprEl = document.getElementById('curve-info-expr');
+    const detailEl = document.getElementById('curve-info-detail');
+    const hintEl = document.getElementById('curve-info-hint');
+    const badgeClass = 'type-' + (info.type === 'circle' ? 'circle' :
+                        info.type === 'ellipse' ? 'ellipse' :
+                        info.type === 'parabola' ? 'parabola' :
+                        info.type === 'hyperbola' ? 'hyperbola' :
+                        info.type === 'function' ? 'function' :
+                        info.type === 'implicit' ? 'implicit' : '');
+    typeEl.innerHTML = '<span class="type-badge ' + badgeClass + '">' + info.badge + '</span>';
+    
+    if (curve.kind === 'function') {
+        renderKatex(exprEl, 'y = ' + exprToLatex(curve.expr));
+    } else {
+        renderKatex(exprEl, exprToLatex(curve.expr));
+    }
+    
+    renderKatex(detailEl, info.detail);
+    hintEl.textContent = '基于方程判别式判断（不依赖灭线）· 再次点击取消选中';
+    const imgRow = document.getElementById('curve-info-image-row');
+    const imgExprRow = document.getElementById('curve-info-image-expr-row');
+    const imgDetailRow = document.getElementById('curve-info-image-detail-row');
+    const imgEl = document.getElementById('curve-info-image');
+    const imgExprEl = document.getElementById('curve-info-image-expr');
+    const imgDetailEl = document.getElementById('curve-info-image-detail');
+    let H = null;
+    try { H = getMatrix2D(); } catch(e) { H = null; }
+    const imgInfo = getProjectiveImageType(curve, H);
+    if (imgInfo && imgInfo.visible) {
+        imgRow.style.display = '';
+        imgExprRow.style.display = '';
+        imgDetailRow.style.display = '';
+        const imgBadgeClass = 'type-' + (imgInfo.type === 'circle' ? 'circle' :
+                            imgInfo.type === 'ellipse' ? 'ellipse' :
+                            imgInfo.type === 'parabola' ? 'parabola' :
+                            imgInfo.type === 'hyperbola' ? 'hyperbola' :
+                            imgInfo.type === 'implicit' ? 'implicit' :
+                            imgInfo.type === 'function-image' ? 'function' :
+                            imgInfo.type === 'singular' ? 'implicit' : '');
+        imgEl.innerHTML = '<span class="type-badge ' + imgBadgeClass + '">' + imgInfo.badge + '</span>';
+        renderKatex(imgExprEl, exprToLatex(imgInfo.expr || '—'));
+        renderKatex(imgDetailEl, imgInfo.detail || '—');
+        const arrowEl = document.getElementById('curve-info-transform-arrow');
+        const fromEl = document.getElementById('curve-info-from-badge');
+        const toEl = document.getElementById('curve-info-to-badge');
+        if (arrowEl && fromEl && toEl) {
+            fromEl.innerHTML = '<span class="type-badge ' + badgeClass + '">' + info.badge + '</span>';
+            toEl.innerHTML = '<span class="type-badge ' + imgBadgeClass + '">' + imgInfo.badge + '</span>';
+            arrowEl.style.display = '';
+        }
+    } else {
+        imgRow.style.display = 'none';
+        imgExprRow.style.display = 'none';
+        imgDetailRow.style.display = 'none';
+        const arrowEl = document.getElementById('curve-info-transform-arrow');
+        if (arrowEl) arrowEl.style.display = 'none';
+    }
+}
+function selectCurveAt(sx, sy, renderer, threshold) {
+    if (threshold === undefined) threshold = 10;
+    let bestId = null;
+    let bestDist = threshold;
+    for (const f of State.functions) {
+        if (!f.visible) continue;
+        const pts = [].concat(f._hitPointsNorm || [], f._hitPointsProj || []);
+        if (!pts || pts.length === 0) continue;
+        for (const p of pts) {
+            const d = Math.hypot(p.sx - sx, p.sy - sy);
+            if (d < bestDist) {
+                bestDist = d;
+                bestId = f.id;
+            }
+        }
+    }
+    if (bestId !== null && bestId === State.selectedCurveId) {
+        State.selectedCurveId = null;
+    } else {
+        State.selectedCurveId = bestId;
+    }
+    updateCurveInfoPanel();
+    redrawAll();
+}
+/* ==================== 交互期渲染分级（性能修复：精度不变） ====================
+   问题：V14 把画布 DPR 强制为 ≥2，在 DPR=1 的显示器上每帧光栅化 4 倍像素，
+        老核显/软渲染机器上拖动明显卡顿。
+   方案：两级渲染——
+     · 静止画面（最终呈现）：DPR = max(devicePixelRatio, 2)，与 V14 完全一致，
+       像素级不降精度（超采样抗锯齿保留）。
+     · 连续交互瞬间（拖动/滚轮/滑杆）：DPR = devicePixelRatio。
+       在 DPR=1 屏幕上 1 CSS px = 1 物理 px，几何、线宽、采样数完全不变，
+       仅跳过超采样，光栅化量降为 1/4 → 交互恢复流畅。
+     · 交互停止 160ms 后自动做一次全精度重绘，落定画面与 V14 像素级一致。 */
+const QualityManager = {
+    interacting: false,
+    _timer: null,
+    mark() {
+        this.interacting = true;
+        clearTimeout(this._timer);
+        this._timer = setTimeout(() => {
+            this.interacting = false;
+            finalQualityRender();
+        }, 160);
+    },
+    dpr() {
+        const native = window.devicePixelRatio || 1;
+        return this.interacting ? native : Math.max(native, 2);
+    }
+};
+/* ==================== 画布渲染器 ==================== */
+class CanvasRenderer {
+    constructor(canvasId, coordDisplayId, mode) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.coordDisplay = document.getElementById(coordDisplayId);
+        this.mode = mode || 'normal';
+        this.width = 0; this.height = 0;
+        this.mouseX = 0; this.mouseY = 0;
+        this.isDragging = false;
+        this.dragStart = {x:0, y:0, ox:0, oy:0};
+        this.setupEvents();
+        this.resize();
+    }
+    setupEvents() {
+        const c = this.canvas;
+        c.addEventListener('mousedown', (e) => {
+            this.isDragging = true;
+            c.classList.add('dragging');
+            this.dragStart = { x: e.offsetX, y: e.offsetY, ox: State.view.ox, oy: State.view.oy };
+        });
+        c.addEventListener('mousemove', (e) => {
+            const rect = c.getBoundingClientRect();
+            this.mouseX = e.clientX - rect.left;
+            this.mouseY = e.clientY - rect.top;
+            const mathCoord = this.toMath(this.mouseX, this.mouseY);
+            this.coordDisplay.textContent = `x: ${mathCoord.x.toFixed(2)}, y: ${mathCoord.y.toFixed(2)}`;
+            if (this.isDragging) {
+                const dx = e.offsetX - this.dragStart.x;
+                const dy = e.offsetY - this.dragStart.y;
+                State.view.ox = this.dragStart.ox + dx;
+                State.view.oy = this.dragStart.oy + dy;
+                document.getElementById('view-ox').value = State.view.ox;
+                document.getElementById('view-oy').value = State.view.oy;
+                document.getElementById('view-ox-val').textContent = Math.round(State.view.ox);
+                document.getElementById('view-oy-val').textContent = Math.round(State.view.oy);
+                redrawAll();
+            }
+        });
+        c.addEventListener('mouseup', () => { this.isDragging = false; c.classList.remove('dragging'); });
+        c.addEventListener('mouseleave', () => { this.isDragging = false; c.classList.remove('dragging'); });
+        c.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            const newScale = Math.max(5, Math.min(300, State.view.scale * delta));
+            State.view.scale = newScale;
+            document.getElementById('view-scale').value = Math.round(newScale);
+            document.getElementById('view-scale-val').textContent = Math.round(newScale);
+            redrawAll();
+        }, {passive: false});
+        this._downX = 0; this._downY = 0; this._moved = false;
+        c.addEventListener('mousedown', (e) => { this._downX = e.offsetX; this._downY = e.offsetY; this._moved = false; });
+        c.addEventListener('mousemove', (e) => {
+            if (this.isDragging) {
+                const dx = e.offsetX - this._downX;
+                const dy = e.offsetY - this._downY;
+                if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this._moved = true;
+            }
+        });
+        c.addEventListener('click', (e) => {
+            if (this._moved) return;
+            const rect = c.getBoundingClientRect();
+            const sx = e.clientX - rect.left;
+            const sy = e.clientY - rect.top;
+            selectCurveAt(sx, sy, this, 12);
+        });
+    }
+    resize() {
+        // 性能修复①：仅在尺寸/精度档位真正变化时才重设 canvas.width/height。
+        // 原实现每次 redrawAll 都执行 canvas.width = ...，每次赋值都会重置画布
+        // 并重新分配后备缓冲区（DPR≥2 时是 4 倍大小的缓冲），拖动时每个
+        // mousemove 触发一次 → 严重卡顿。现在缓存上次尺寸，未变化直接跳过。
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        this.width = rect.width;
+        this.height = rect.height;
+        this.dpr = QualityManager.dpr();
+        this._applySize();
+    }
+    _applySize() {
+        const w = Math.round(this.width * this.dpr);
+        const h = Math.round(this.height * this.dpr);
+        if (this._bw === w && this._bh === h && this._bdpr === this.dpr) return;
+        this._bw = w; this._bh = h; this._bdpr = this.dpr;
+        this.canvas.width = w;
+        this.canvas.height = h;
+        this.canvas.style.width = this.width + 'px';
+        this.canvas.style.height = this.height + 'px';
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+        this.ctx.imageSmoothingEnabled = true;
+        this.ctx.imageSmoothingQuality = 'high';
+    }
+    toScreen(x, y) {
+        return {
+            x: this.width/2 + State.view.ox + x * State.view.scale,
+            y: this.height/2 + State.view.oy - y * State.view.scale
+        };
+    }
+    toMath(sx, sy) {
+        return {
+            x: (sx - this.width/2 - State.view.ox) / State.view.scale,
+            y: -(sy - this.height/2 - State.view.oy) / State.view.scale
+        };
+    }
+    clear() {
+        this.ctx.save();
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.restore();
+    }
+    drawGrid() {
+        if (!State.view.showGrid) return;
+        const ctx = this.ctx;
+        const s = State.view.scale;
+        const cx = this.width/2 + State.view.ox;
+        const cy = this.height/2 + State.view.oy;
+        let step = 1;
+        if (s < 15) step = 10;
+        else if (s < 30) step = 5;
+        else if (s < 60) step = 2;
+        else if (s < 120) step = 1;
+        else if (s < 250) step = 0.5;
+        else step = 0.2;
+        const stepPx = step * s;
+        const majorStep = step * 5;
+        ctx.strokeStyle = '#eef0f3';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        let x = cx % stepPx;
+        while (x < this.width) {
+            ctx.moveTo(Math.round(x) + 0.5, 0); 
+            ctx.lineTo(Math.round(x) + 0.5, this.height);
+            x += stepPx;
+        }
+        let y = cy % stepPx;
+        while (y < this.height) {
+            ctx.moveTo(0, Math.round(y) + 0.5); 
+            ctx.lineTo(this.width, Math.round(y) + 0.5);
+            y += stepPx;
+        }
+        ctx.stroke();
+        ctx.strokeStyle = '#d8dbe0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const majorPx = majorStep * s;
+        x = cx % majorPx;
+        while (x < this.width) {
+            ctx.moveTo(Math.round(x) + 0.5, 0); 
+            ctx.lineTo(Math.round(x) + 0.5, this.height);
+            x += majorPx;
+        }
+        y = cy % majorPx;
+        while (y < this.height) {
+            ctx.moveTo(0, Math.round(y) + 0.5); 
+            ctx.lineTo(this.width, Math.round(y) + 0.5);
+            y += majorPx;
+        }
+        ctx.stroke();
+    }
+    drawAxes() {
+        if (!State.view.showAxes) return;
+        const ctx = this.ctx;
+        const cx = this.width/2 + State.view.ox;
+        const cy = this.height/2 + State.view.oy;
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, cy); ctx.lineTo(this.width, cy);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(this.width-10, cy-4);
+        ctx.lineTo(this.width, cy);
+        ctx.lineTo(this.width-10, cy+4);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx, 0); ctx.lineTo(cx, this.height);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx-4, 10);
+        ctx.lineTo(cx, 0);
+        ctx.lineTo(cx+4, 10);
+        ctx.stroke();
+        ctx.fillStyle = '#2a2a2a';
+        ctx.font = '12px ' + getComputedStyle(document.body).getPropertyValue('--font');
+        ctx.textBaseline = 'alphabetic';
+        ctx.textAlign = 'left';
+        ctx.fillText('x', this.width - 14, cy - 6);
+        ctx.fillText('y', cx + 6, 14);
+        if (State.view.showLabels) {
+            const s = State.view.scale;
+            let step = 1;
+            if (s < 15) step = 10;
+            else if (s < 30) step = 5;
+            else if (s < 60) step = 2;
+            else if (s < 120) step = 1;
+            else if (s < 250) step = 0.5;
+            else step = 0.2;
+            const stepPx = step * s;
+            const majorStep = step * 5;
+            const majorPx = majorStep * s;
+            
+            ctx.strokeStyle = '#2a2a2a';
+            ctx.fillStyle = '#9ca0a6';
+            ctx.font = '8px ' + getComputedStyle(document.body).getPropertyValue('--font');
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            let i_minor = -Math.ceil(cx / stepPx);
+            const maxX_minor = Math.ceil((this.width - cx) / stepPx);
+            for (; i_minor <= maxX_minor; i_minor++) {
+                if (i_minor === 0) continue;
+                if (i_minor % 5 === 0) continue;
+                const px = cx + i_minor * stepPx;
+                if (px < 0 || px > this.width) continue;
+                ctx.beginPath();
+                ctx.moveTo(px, cy - 2); ctx.lineTo(px, cy + 2);
+                ctx.stroke();
+                ctx.fillText(formatNum(i_minor * step), px, cy + 4);
+            }
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            let j_minor = -Math.ceil((this.height - cy) / stepPx);
+            const maxY_minor = Math.ceil(cy / stepPx);
+            for (; j_minor <= maxY_minor; j_minor++) {
+                if (j_minor === 0) continue;
+                if (j_minor % 5 === 0) continue;
+                const py = cy - j_minor * stepPx;
+                if (py < 0 || py > this.height) continue;
+                ctx.beginPath();
+                ctx.moveTo(cx - 2, py); ctx.lineTo(cx + 2, py);
+                ctx.stroke();
+                ctx.fillText(formatNum(j_minor * step), cx - 4, py);
+            }
+            ctx.strokeStyle = '#2a2a2a';
+            ctx.fillStyle = '#5c6066';
+            ctx.font = '10px ' + getComputedStyle(document.body).getPropertyValue('--font');
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            let i = -Math.ceil(cx / majorPx);
+            const maxX = Math.ceil((this.width - cx) / majorPx);
+            for (; i <= maxX; i++) {
+                if (i === 0) continue;
+                const px = cx + i * majorPx;
+                if (px < 0 || px > this.width) continue;
+                ctx.beginPath();
+                ctx.moveTo(px, cy - 4); ctx.lineTo(px, cy + 4);
+                ctx.stroke();
+                ctx.fillText(formatNum(i * majorStep), px, cy + 5);
+            }
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            let j = -Math.ceil((this.height - cy) / majorPx);
+            const maxY = Math.ceil(cy / majorPx);
+            for (; j <= maxY; j++) {
+                if (j === 0) continue;
+                const py = cy - j * majorPx;
+                if (py < 0 || py > this.height) continue;
+                ctx.beginPath();
+                ctx.moveTo(cx - 4, py); ctx.lineTo(cx + 4, py);
+                ctx.stroke();
+                ctx.fillText(formatNum(j * majorStep), cx - 6, py);
+            }
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'top';
+            ctx.fillText('0', cx - 4, cy + 4);
+        }
+    }
+    drawCurve(funcObj, useProjective, isDashed) {
+        const _hpKey = useProjective ? '_hitPointsProj' : '_hitPointsNorm';
+        funcObj[_hpKey] = [];
+        funcObj._hitPoints = funcObj[_hpKey];
+        const isSelected = (State.selectedCurveId === funcObj.id);
+        const ctx = this.ctx;
+        const oldDash = ctx.getLineDash();
+        if (isDashed) ctx.setLineDash([4, 4]);
+        
+        if (funcObj.kind === 'implicit') { 
+            this.drawImplicitCurve(funcObj, isSelected, useProjective); 
+            ctx.setLineDash(oldDash);
+            return; 
+        }
+        if (funcObj.kind === 'conic') { 
+            this.drawConicCurve(funcObj, isSelected, useProjective); 
+            ctx.setLineDash(oldDash);
+            return; 
+        }
+        const N = State.view.sampleCount;
+        const s = State.view.scale;
+        const ox = State.view.ox;
+        const oy = State.view.oy;
+        const cx = this.width/2 + ox;
+        const cy = this.height/2 + oy;
+        const xMin = -cx / s;
+        const xMax = (this.width - cx) / s;
+        const dx = (xMax - xMin) / N;
+        if (!useProjective) {
+            if (isSelected) {
+                ctx.strokeStyle = funcObj.color;
+                ctx.lineWidth = 4;
+                ctx.globalAlpha = 0.3;
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+                let inSeg2 = false;
+                let prevY2 = null;
+                ctx.beginPath();
+                for (let i = 0; i <= N; i++) {
+                    const x = xMin + i * dx;
+                    let y;
+                    try { y = funcObj.fn(x); } catch(e) { y = NaN; }
+                    if (!isFinite(y)) { if (inSeg2) { ctx.stroke(); ctx.beginPath(); inSeg2 = false; } prevY2 = null; continue; }
+                    const sx = cx + x * s, sy = cy - y * s;
+                    if (sy < -10000 || sy > this.height + 10000) { if (inSeg2) { ctx.stroke(); ctx.beginPath(); inSeg2 = false; } prevY2 = y; continue; }
+                    if (prevY2 !== null && Math.abs(y - prevY2) > 500) { if (inSeg2) { ctx.stroke(); ctx.beginPath(); inSeg2 = false; } }
+                    if (!inSeg2) { ctx.moveTo(sx, sy); inSeg2 = true; } else { ctx.lineTo(sx, sy); }
+                    prevY2 = y;
+                }
+                if (inSeg2) ctx.stroke();
+                ctx.globalAlpha = 1;
+                ctx.lineWidth = 3;
+            } else {
+                ctx.strokeStyle = funcObj.color;
+                ctx.lineWidth = 2;
+            }
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            let inSegment = false;
+            let prevY = null;
+            ctx.beginPath();
+            for (let i = 0; i <= N; i++) {
+                const x = xMin + i * dx;
+                let y;
+                try { y = funcObj.fn(x); } catch(e) { y = NaN; }
+                if (!isFinite(y)) {
+                    if (inSegment) { ctx.stroke(); ctx.beginPath(); inSegment = false; }
+                    prevY = null;
+                    continue;
+                }
+                const sx = cx + x * s;
+                const sy = cy - y * s;
+                if (i % 3 === 0) funcObj._hitPoints.push({ sx: sx, sy: sy });
+                if (prevY !== null && Math.abs(y - prevY) > 50 / s * 10) {
+                    if (inSegment) { ctx.stroke(); ctx.beginPath(); inSegment = false; }
+                }
+                if (sy < -10000 || sy > this.height + 10000) {
+                    if (inSegment) { ctx.stroke(); ctx.beginPath(); inSegment = false; }
+                    prevY = y;
+                    continue;
+                }
+                const py = Math.max(-10000, Math.min(10000, sy));
+                if (!inSegment) {
+                    ctx.moveTo(sx, py);
+                    inSegment = true;
+                } else {
+                    ctx.lineTo(sx, py);
+                }
+                prevY = y;
+            }
+            if (inSegment) ctx.stroke();
+            if (State.view.showCurvePoints) {
+                ctx.fillStyle = funcObj.color;
+                for (let i = 0; i <= N; i += Math.max(1, Math.floor(N/50))) {
+                    const x = xMin + i * dx;
+                    let y;
+                    try { y = funcObj.fn(x); } catch(e) { continue; }
+                    if (!isFinite(y)) continue;
+                    const sx = cx + x * s;
+                    const sy = cy - y * s;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 2, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+        } else {
+            const H = getMatrix2D();
+            const sampleFn = (t) => {
+                let y;
+                try { y = funcObj.fn(t); } catch(e) { return null; }
+                if (!isFinite(y)) return null;
+                return { x: t, y: y };
+            };
+            if (isSelected) {
+                ctx.save();
+                ctx.shadowColor = funcObj.color;
+                ctx.shadowBlur = 12;
+                drawProjectiveCurve(sampleFn, [xMin, xMax], N, ctx, cx, cy, s, H, this.width, this.height, funcObj.color, 4);
+                ctx.restore();
+            }
+            drawProjectiveCurve(sampleFn, [xMin, xMax], N, ctx, cx, cy, s, H, this.width, this.height, funcObj.color, isSelected ? 3 : 2);
+            {
+                const step = Math.max(1, Math.floor(N / 200));
+                for (let i = 0; i <= N; i += step) {
+                    const x = xMin + i * dx;
+                    let y;
+                    try { y = funcObj.fn(x); } catch(e) { continue; }
+                    if (!isFinite(y)) continue;
+                    const tp = transformPoint(H, x, y);
+                    if (tp.atInfinity || Math.abs(tp.W) < 0.03) continue;
+                    const sx = cx + tp.x * s;
+                    const sy = cy - tp.y * s;
+                    if (sx < -500 || sx > this.width + 500 || sy < -500 || sy > this.height + 500) continue;
+                    funcObj._hitPoints.push({ sx: sx, sy: sy });
+                }
+            }
+            if (State.view.showCurvePoints) {
+                ctx.fillStyle = funcObj.color;
+                const step = Math.max(1, Math.floor(N / 50));
+                for (let i = 0; i <= N; i += step) {
+                    const x = xMin + i * dx;
+                    let y;
+                    try { y = funcObj.fn(x); } catch(e) { continue; }
+                    if (!isFinite(y)) continue;
+                    const tp = transformPoint(H, x, y);
+                    if (tp.atInfinity || Math.abs(tp.W) < 0.03) continue;
+                    const sx = cx + tp.x * s;
+                    const sy = cy - tp.y * s;
+                    if (sx < 0 || sx > this.width || sy < 0 || sy > this.height) continue;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 2, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+        }
+        ctx.setLineDash(oldDash);
+    }
+    drawConicCurve(conicObj, isSelected, useProjective) {
+        const branches = conicObj.branches || [conicObj.paramFn];
+        for (const branch of branches) {
+            this.drawParametricBranch(branch, conicObj.tRange, conicObj.color, isSelected, conicObj, useProjective);
+        }
+    }
+    drawParametricBranch(paramFn, tRange, color, isSelected, curveObj, useProjective) {
+        const ctx = this.ctx;
+        const N = State.view.sampleCount;
+        const s = State.view.scale;
+        const cx = this.width/2 + State.view.ox;
+        const cy = this.height/2 + State.view.oy;
+        const [tMin, tMax] = tRange;
+        const dt = (tMax - tMin) / N;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        if (!useProjective) {
+            if (isSelected) {
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = color;
+                ctx.globalAlpha = 0.3;
+                ctx.beginPath();
+                let inSeg2 = false;
+                for (let i = 0; i <= N; i++) {
+                    const t = tMin + i * dt;
+                    let pt;
+                    try { pt = paramFn(t); } catch(e) { pt = null; }
+                    if (!pt || !isFinite(pt.x) || !isFinite(pt.y)) { if (inSeg2) { ctx.stroke(); ctx.beginPath(); inSeg2 = false; } continue; }
+                    const sx = cx + pt.x * s, sy = cy - pt.y * s;
+                    if (sx < -10000 || sx > this.width + 10000 || sy < -10000 || sy > this.height + 10000) { if (inSeg2) { ctx.stroke(); ctx.beginPath(); inSeg2 = false; } continue; }
+                    if (!inSeg2) { ctx.moveTo(sx, sy); inSeg2 = true; }
+                    else { ctx.lineTo(sx, sy); }
+                }
+                if (inSeg2) ctx.stroke();
+                ctx.globalAlpha = 1;
+                ctx.lineWidth = 3;
+            } else {
+                ctx.lineWidth = 2;
+            }
+            let inSeg = false;
+            let prevX = null, prevY = null;
+            ctx.beginPath();
+            for (let i = 0; i <= N; i++) {
+                const t = tMin + i * dt;
+                let pt;
+                try { pt = paramFn(t); } catch(e) { pt = null; }
+                if (!pt || !isFinite(pt.x) || !isFinite(pt.y)) {
+                    if (inSeg) { ctx.stroke(); ctx.beginPath(); inSeg = false; }
+                    prevX = prevY = null;
+                    continue;
+                }
+                if (prevX !== null) {
+                    const jump = Math.abs(pt.x - prevX) + Math.abs(pt.y - prevY);
+                    if (jump > 50) {
+                        if (inSeg) { ctx.stroke(); ctx.beginPath(); inSeg = false; }
+                    }
+                }
+                const sx = cx + pt.x * s;
+                const sy = cy - pt.y * s;
+                if (curveObj && i % 3 === 0) {
+                    curveObj._hitPoints.push({ sx: sx, sy: sy });
+                }
+                if (sx < -10000 || sx > this.width + 10000 || sy < -10000 || sy > this.height + 10000) {
+                    if (inSeg) { ctx.stroke(); ctx.beginPath(); inSeg = false; }
+                    prevX = pt.x; prevY = pt.y;
+                    continue;
+                }
+                const px = Math.max(-10000, Math.min(10000, sx));
+                const py = Math.max(-10000, Math.min(10000, sy));
+                if (!inSeg) { ctx.moveTo(px, py); inSeg = true; }
+                else { ctx.lineTo(px, py); }
+                prevX = pt.x; prevY = pt.y;
+            }
+            if (inSeg) ctx.stroke();
+            if (State.view.showCurvePoints) {
+                ctx.fillStyle = color;
+                const step = Math.max(1, Math.floor(N / 50));
+                for (let i = 0; i <= N; i += step) {
+                    const t = tMin + i * dt;
+                    let pt;
+                    try { pt = paramFn(t); } catch(e) { continue; }
+                    if (!pt || !isFinite(pt.x) || !isFinite(pt.y)) continue;
+                    const sx = cx + pt.x * s;
+                    const sy = cy - pt.y * s;
+                    if (sx < 0 || sx > this.width || sy < 0 || sy > this.height) continue;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 2, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+        } else {
+            const H = getMatrix2D();
+            if (isSelected) {
+                ctx.save();
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 12;
+                drawProjectiveCurve(paramFn, [tMin, tMax], N, ctx, cx, cy, s, H, this.width, this.height, color, 4);
+                ctx.restore();
+            }
+            drawProjectiveCurve(paramFn, [tMin, tMax], N, ctx, cx, cy, s, H, this.width, this.height, color, isSelected ? 3 : 2);
+            if (curveObj) {
+                const step = Math.max(1, Math.floor(N / 200));
+                for (let i = 0; i <= N; i += step) {
+                    const t = tMin + i * dt;
+                    let pt;
+                    try { pt = paramFn(t); } catch(e) { continue; }
+                    if (!pt || !isFinite(pt.x) || !isFinite(pt.y)) continue;
+                    const tp = transformPoint(H, pt.x, pt.y);
+                    if (tp.atInfinity || Math.abs(tp.W) < 0.03) continue;
+                    const sx = cx + tp.x * s;
+                    const sy = cy - tp.y * s;
+                    if (sx < -500 || sx > this.width + 500 || sy < -500 || sy > this.height + 500) skip;
+                    curveObj._hitPoints.push({ sx: sx, sy: sy });
+                }
+            }
+            if (State.view.showCurvePoints) {
+                ctx.fillStyle = color;
+                const step = Math.max(1, Math.floor(N / 50));
+                for (let i = 0; i <= N; i += step) {
+                    const t = tMin + i * dt;
+                    let pt;
+                    try { pt = paramFn(t); } catch(e) { continue; }
+                    if (!pt || !isFinite(pt.x) || !isFinite(pt.y)) continue;
+                    const tp = transformPoint(H, pt.x, pt.y);
+                    if (tp.atInfinity || Math.abs(tp.W) < 0.03) continue;
+                    const sx = cx + tp.x * s;
+                    const sy = cy - tp.y * s;
+                    if (sx < 0 || sx > this.width || sy < 0 || sy > this.height) continue;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 2, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+        }
+    }
+    drawImplicitCurve(implObj, isSelected, useProjective) {
+        const ctx = this.ctx;
+        const s = State.view.scale;
+        const cx = this.width/2 + State.view.ox;
+        const cy = this.height/2 + State.view.oy;
+        const H = useProjective ? getMatrix2D() : null;
+        let xMin, xMax, yMin, yMax;
+        if (useProjective) {
+            const range = Math.max(this.width, this.height) / s + 4;
+            xMin = -range; xMax = range;
+            yMin = -range; yMax = range;
+        } else {
+            xMin = -cx / s;
+            xMax = (this.width - cx) / s;
+            yMin = -(this.height - cy) / s;
+            yMax = cy / s;
+            const margin = 2;
+            xMin -= margin; xMax += margin;
+            yMin -= margin; yMax += margin;
+        }
+        const GRID = Math.max(100, Math.min(400, Math.floor(Math.max(this.width, this.height) / 3)));
+        let dx = (xMax - xMin) / GRID;
+        let dy = (yMax - yMin) / GRID;
+        const _jitterX = dx * 0.37;
+        const _jitterY = dy * 0.63;
+        xMin += _jitterX;
+        yMin += _jitterY;
+        const f = new Float64Array((GRID + 1) * (GRID + 1));
+        for (let j = 0; j <= GRID; j++) {
+            const y = yMin + j * dy;
+            for (let i = 0; i <= GRID; i++) {
+                const x = xMin + i * dx;
+                let v;
+                try { v = implObj.fxy(x, y); } catch(e) { v = NaN; }
+                if (!isFinite(v)) v = 1e30;
+                f[j * (GRID + 1) + i] = v;
+            }
+        }
+        const lw = isSelected ? 3 : 2;
+        ctx.strokeStyle = implObj.color;
+        ctx.lineWidth = lw;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        if (isSelected) {
+            ctx.save();
+            ctx.shadowColor = implObj.color;
+            ctx.shadowBlur = 12;
+        }
+        ctx.beginPath();
+        for (let j = 0; j < GRID; j++) {
+            for (let i = 0; i < GRID; i++) {
+                const f0 = f[j * (GRID + 1) + i];
+                const f1 = f[j * (GRID + 1) + (i + 1)];
+                const f2 = f[(j + 1) * (GRID + 1) + (i + 1)];
+                const f3 = f[(j + 1) * (GRID + 1) + i];
+                const s0 = f0 > 0, s1 = f1 > 0, s2 = f2 > 0, s3 = f3 > 0;
+                if (s0 === s1 && s1 === s2 && s2 === s3) continue;
+                if (Math.abs(f0) > 1e20 || Math.abs(f1) > 1e20 || Math.abs(f2) > 1e20 || Math.abs(f3) > 1e20) continue;
+                const x0 = xMin + i * dx, x1 = x0 + dx;
+                const y0 = yMin + j * dy, y1 = y0 + dy;
+                const e01 = (s0 !== s1) ? { x: x0 + dx * (f0 / (f0 - f1)), y: y0 } : null;
+                const e12 = (s1 !== s2) ? { x: x1, y: y0 + dy * (f1 / (f1 - f2)) } : null;
+                const e23 = (s2 !== s3) ? { x: x0 + dx * (f3 / (f3 - f2)), y: y1 } : null;
+                const e30 = (s3 !== s0) ? { x: x0, y: y0 + dy * (f0 / (f0 - f3)) } : null;
+                let segs = [];
+                const idx = (s0 ? 1 : 0) | (s1 ? 2 : 0) | (s2 ? 4 : 0) | (s3 ? 8 : 0);
+                const fc = 0.25 * (f0 + f1 + f2 + f3);
+                switch (idx) {
+                    case 1: case 14: segs = [[e01, e30]]; break;
+                    case 2: case 13: segs = [[e01, e12]]; break;
+                    case 3: case 12: segs = [[e12, e30]]; break;
+                    case 4: case 11: segs = [[e12, e23]]; break;
+                    case 5: segs = ((fc > 0) === s0) ? [[e01, e12], [e23, e30]] : [[e01, e30], [e12, e23]]; break;
+                    case 6: case 9: segs = [[e01, e23]]; break;
+                    case 7: case 8: segs = [[e23, e30]]; break;
+                    case 10: segs = ((fc > 0) === s0) ? [[e01, e30], [e12, e23]] : [[e01, e12], [e23, e30]]; break;
+                    case 0: case 15: break;
+                }
+                for (const seg of segs) {
+                    if (!seg[0] || !seg[1]) continue;
+                    this._drawImplicitSegment(seg[0], seg[1], ctx, cx, cy, s, H, this.width, this.height, implObj);
+                }
+            }
+        }
+        ctx.stroke();
+        if (isSelected) ctx.restore();
+    }
+    _drawImplicitSegment(p1, p2, ctx, cx, cy, s, H, width, height, implObj) {
+        const W_NEAR = 0.03;
+        const MARGIN = 200;
+        let sx1, sy1, sx2, sy2;
+        let tp1 = null;
+        if (H) {
+            tp1 = transformPoint(H, p1.x, p1.y);
+            const tp2 = transformPoint(H, p2.x, p2.y);
+            if (tp1.atInfinity || tp2.atInfinity) return;
+            if (Math.abs(tp1.W) < W_NEAR || Math.abs(tp2.W) < W_NEAR) return;
+            if (tp1.W * tp2.W < 0) return;
+            sx1 = cx + tp1.x * s; sy1 = cy - tp1.y * s;
+            sx2 = cx + tp2.x * s; sy2 = cy - tp2.y * s;
+        } else {
+            sx1 = cx + p1.x * s; sy1 = cy - p1.y * s;
+            sx2 = cx + p2.x * s; sy2 = cy - p2.y * s;
+        }
+        if (implObj._hitPoints.length < 5000) {
+            implObj._hitPoints.push({ sx: sx1, sy: sy1 });
+        }
+        if ((sx1 < -MARGIN || sx1 > width + MARGIN || sy1 < -MARGIN || sy1 > height + MARGIN) &&
+            (sx2 < -MARGIN || sx2 > width + MARGIN || sy2 < -MARGIN || sy2 > height + MARGIN)) return;
+        const dist = Math.hypot(sx2 - sx1, sy2 - sy1);
+        if (dist > 500) {
+            if (H && tp1) {
+                const mx = (p1.x + p2.x) * 0.5;
+                const my = (p1.y + p2.y) * 0.5;
+                const tpM = transformPoint(H, mx, my);
+                if (tpM.atInfinity || Math.abs(tpM.W) < W_NEAR || tpM.W * tp1.W < 0) return;
+                const smx = cx + tpM.x * s;
+                const smy = cy - tpM.y * s;
+                const d1 = Math.hypot(smx - sx1, smy - sy1);
+                const d2 = Math.hypot(sx2 - smx, sy2 - smy);
+                if (d1 <= 500 && d2 <= 500) {
+                    ctx.moveTo(sx1, sy1);
+                    ctx.lineTo(smx, smy);
+                    ctx.lineTo(sx2, sy2);
+                }
+                return;
+            }
+            return;
+        }
+        ctx.moveTo(sx1, sy1);
+        ctx.lineTo(sx2, sy2);
+    }
+    drawROI() {
+        if (!State.view.showROI) return;
+        const ctx = this.ctx;
+        const s = State.view.scale;
+        const range = 3;
+        const tl = this.toScreen(-range, range);
+        const br = this.toScreen(range, -range);
+        ctx.strokeStyle = 'rgba(74,108,181,0.35)';
+        ctx.fillStyle = 'rgba(74,108,181,0.05)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+        ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(74,108,181,0.55)';
+        ctx.font = '10px sans-serif';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText('ROI', tl.x + 4, tl.y + 14);
+    }
+    drawProjectiveGrid() {
+        if (!State.view.showGrid) return;
+        const ctx = this.ctx;
+        const s = State.view.scale;
+        const cx = this.width/2 + State.view.ox;
+        const cy = this.height/2 + State.view.oy;
+        const H = getMatrix2D();
+        const range = Math.max(this.width, this.height) / s + 4;
+        const halfR = Math.ceil(range);
+        let step = 1;
+        if (s < 15) step = 10;
+        else if (s < 30) step = 5;
+        else if (s < 60) step = 2;
+        else if (s < 120) step = 1;
+        else if (s < 250) step = 0.5;
+        else step = 0.2;
+        const majorStep = step * 5;
+        const ySampleStep = step / 4;
+        const xSampleStep = step / 4;
+        ctx.lineWidth = 1;
+        ctx.lineCap = 'butt';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#eef0f3';
+        ctx.beginPath();
+        for (let x = -halfR; x <= halfR; x += step) {
+            let inSeg = false;
+            let prevW = 0;
+            for (let y = -halfR; y <= halfR; y += ySampleStep) {
+                const tp = transformPoint(H, x, y);
+                if (tp.atInfinity || Math.abs(tp.W) < 0.03 || (inSeg && prevW * tp.W < 0)) {
+                    if (inSeg) { ctx.stroke(); ctx.beginPath(); inSeg = false; }
+                    prevW = tp.W;
+                    continue;
+                }
+                const sx = cx + tp.x * s;
+                const sy = cy - tp.y * s;
+                if (sx < -2000 || sx > this.width + 2000 || sy < -2000 || sy > this.height + 2000) {
+                    if (inSeg) { ctx.stroke(); ctx.beginPath(); inSeg = false; }
+                    prevW = tp.W;
+                    continue;
+                }
+                if (!inSeg) { ctx.moveTo(sx, sy); inSeg = true; }
+                else { ctx.lineTo(sx, sy); }
+                prevW = tp.W;
+            }
+            if (inSeg) ctx.stroke();
+            ctx.beginPath();
+        }
+        ctx.strokeStyle = '#eef0f3';
+        ctx.beginPath();
+        for (let y = -halfR; y <= halfR; y += step) {
+            let inSeg = false;
+            let prevW = 0;
+            for (let x = -halfR; x <= halfR; x += xSampleStep) {
+                const tp = transformPoint(H, x, y);
+                if (tp.atInfinity || Math.abs(tp.W) < 0.03 || (inSeg && prevW * tp.W < 0)) {
+                    if (inSeg) { ctx.stroke(); ctx.beginPath(); inSeg = false; }
+                    prevW = tp.W;
+                    continue;
+                }
+                const sx = cx + tp.x * s;
+                const sy = cy - tp.y * s;
+                if (sx < -2000 || sx > this.width + 2000 || sy < -2000 || sy > this.height + 2000) {
+                    if (inSeg) { ctx.stroke(); ctx.beginPath(); inSeg = false; }
+                    prevW = tp.W;
+                    continue;
+                }
+                if (!inSeg) { ctx.moveTo(sx, sy); inSeg = true; }
+                else { ctx.lineTo(sx, sy); }
+                prevW = tp.W;
+            }
+            if (inSeg) ctx.stroke();
+            ctx.beginPath();
+        }
+        ctx.strokeStyle = '#d8dbe0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let x = -Math.ceil(halfR/majorStep)*majorStep; x <= halfR; x += majorStep) {
+            let inSeg = false;
+            let prevW = 0;
+            for (let y = -halfR; y <= halfR; y += ySampleStep) {
+                const tp = transformPoint(H, x, y);
+                if (tp.atInfinity || Math.abs(tp.W) < 0.03 || (inSeg && prevW * tp.W < 0)) {
+                    if (inSeg) { ctx.stroke(); ctx.beginPath(); inSeg = false; }
+                    prevW = tp.W;
+                    continue;
+                }
+                const sx = cx + tp.x * s;
+                const sy = cy - tp.y * s;
+                if (sx < -2000 || sx > this.width + 2000 || sy < -2000 || sy > this.height + 2000) {
+                    if (inSeg) { ctx.stroke(); ctx.beginPath(); inSeg = false; }
+                    prevW = tp.W;
+                    continue;
+                }
+                if (!inSeg) { ctx.moveTo(sx, sy); inSeg = true; }
+                else { ctx.lineTo(sx, sy); }
+                prevW = tp.W;
+            }
+            if (inSeg) ctx.stroke();
+            ctx.beginPath();
+        }
+        ctx.strokeStyle = '#d8dbe0';
+        ctx.beginPath();
+        for (let y = -Math.ceil(halfR/majorStep)*majorStep; y <= halfR; y += majorStep) {
+            let inSeg = false;
+            let prevW = 0;
+            for (let x = -halfR; x <= halfR; x += xSampleStep) {
+                const tp = transformPoint(H, x, y);
+                if (tp.atInfinity || Math.abs(tp.W) < 0.03 || (inSeg && prevW * tp.W < 0)) {
+                    if (inSeg) { ctx.stroke(); ctx.beginPath(); inSeg = false; }
+                    prevW = tp.W;
+                    continue;
+                }
+                const sx = cx + tp.x * s;
+                const sy = cy - tp.y * s;
+                if (sx < -2000 || sx > this.width + 2000 || sy < -2000 || sy > this.height + 2000) {
+                    if (inSeg) { ctx.stroke(); ctx.beginPath(); inSeg = false; }
+                    prevW = tp.W;
+                    continue;
+                }
+                if (!inSeg) { ctx.moveTo(sx, sy); inSeg = true; }
+                else { ctx.lineTo(sx, sy); }
+                prevW = tp.W;
+            }
+            if (inSeg) ctx.stroke();
+            ctx.beginPath();
+        }
+    }
+    drawVanishingPoints() {
+        const ctx = this.ctx;
+        const s = State.view.scale;
+        const cx = this.width/2 + State.view.ox;
+        const cy = this.height/2 + State.view.oy;
+        const H = getMatrix2D();
+        const vl = computeVanishingLine(H);
+        if (vl) {
+            ctx.strokeStyle = 'rgba(123,31,162,0.25)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            if (Math.abs(vl.b) > EPS_W) {
+                const x1 = -20, x2 = 20;
+                const y1 = -(vl.a * x1 + vl.c) / vl.b;
+                const y2 = -(vl.a * x2 + vl.c) / vl.b;
+                ctx.moveTo(cx + x1 * s, cy - y1 * s);
+                ctx.lineTo(cx + x2 * s, cy - y2 * s);
+            } else if (Math.abs(vl.a) > EPS_W) {
+                const xv = -vl.c / vl.a;
+                ctx.moveTo(cx + xv * s, -100);
+                ctx.lineTo(cx + xv * s, this.height + 100);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = 'rgba(123,31,162,0.5)';
+            ctx.font = '10px ' + getComputedStyle(document.body).getPropertyValue('--font');
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText('灭线 W′=0', 8, 8);
+        }
+        const vps = [];
+        const vpx = computeVanishingPoint(H, 1, 0);
+        if (vpx) vps.push({ ...vpx, label: 'Vx', color: '#cc0000' });
+        const vpy = computeVanishingPoint(H, 0, 1);
+        if (vpy) vps.push({ ...vpy, label: 'Vy', color: '#0066cc' });
+        for (const vp of vps) {
+            const sx = cx + vp.x * s;
+            const sy = cy - vp.y * s;
+            if (sx < -200 || sx > this.width + 200 || sy < -200 || sy > this.height + 200) continue;
+            ctx.fillStyle = vp.color;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 5, 0, Math.PI*2);
+            ctx.fill();
+            ctx.strokeStyle = vp.color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 8, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.fillStyle = vp.color;
+            ctx.font = 'bold 11px ' + getComputedStyle(document.body).getPropertyValue('--font');
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(vp.label, sx, sy - 12);
+        }
+    }
+    render() {
+        // 性能修复②：渲染前同步精度档位（交互中→物理分辨率，静止→超采样）。
+        // _applySize 内部有缓存判断，档位未变时零开销，也不读布局。
+        this.dpr = QualityManager.dpr();
+        this._applySize();
+        this.clear();
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+        this.ctx.imageSmoothingEnabled = true;
+        this.ctx.imageSmoothingQuality = 'high';
+        
+        const mode = this.mode;
+        
+        const renderProjectiveGrid = mode === 'projective' || mode === 'single_projective' || mode === 'single_normal_dashed_projective_solid' || mode === 'single_normal_solid_projective_dashed';
+        const renderNormal = mode === 'normal' || mode === 'single_normal' || mode === 'single_normal_solid_projective_dashed' || mode === 'single_normal_dashed_projective_solid';
+        const renderProjective = mode === 'projective' || mode === 'single_projective' || mode === 'single_normal_solid_projective_dashed' || mode === 'single_normal_dashed_projective_solid';
+        const isNormalDashed = mode === 'single_normal_dashed_projective_solid';
+        const isProjectiveDashed = mode === 'single_normal_solid_projective_dashed';
+        if (renderProjectiveGrid) {
+            this.drawProjectiveGrid();
+        } else {
+            this.drawGrid();
+        }
+        this.drawAxes();
+        this.drawROI();
+        for (const f of State.functions) {
+            if (!f.visible) continue;
+            
+            if (renderNormal) this.drawCurve(f, false, isNormalDashed);
+            if (renderProjective) this.drawCurve(f, true, isProjectiveDashed);
+        }
+        if (renderProjectiveGrid) {
+            this.drawVanishingPoints();
+        }
+    }
+}
+/* ==================== 3D 相机视图渲染器 ==================== */
+class CameraView3D {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        if (!this.canvas) return;
+        this.ctx = this.canvas.getContext('2d');
+        this.width = 0;
+        this.height = 0;
+        this.viewAngleY = -Math.PI / 5;
+        this.viewAngleX = Math.PI / 7;
+        this.isDragging = false;
+        this.lastMouseX = 0;
+        this.lastMouseY = 0;
+        this.resize();
+        this.setupEvents();
+    }
+    resize() {
+        if (!this.canvas) return;
+        const rect = this.canvas.getBoundingClientRect();
+        this.width = rect.width;
+        this.height = rect.height;
+        this.dpr = QualityManager.dpr();
+        this._applySize();
+    }
+    _applySize() {
+        // 性能修复①（同 CanvasRenderer）：尺寸/档位未变时不重建后备缓冲区
+        if (!this.canvas) return;
+        const w = Math.round(this.width * this.dpr);
+        const h = Math.round(this.height * this.dpr);
+        if (this._bw === w && this._bh === h && this._bdpr === this.dpr) return;
+        this._bw = w; this._bh = h; this._bdpr = this.dpr;
+        this.canvas.width = w;
+        this.canvas.height = h;
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+        this.ctx.imageSmoothingEnabled = true;
+        this.ctx.imageSmoothingQuality = 'high';
+    }
+    project3D(x, y, z) {
+        const cosY = Math.cos(this.viewAngleY), sinY = Math.sin(this.viewAngleY);
+        const x1 = x * cosY - z * sinY;
+        const z1 = x * sinY + z * cosY;
+        const cosX = Math.cos(this.viewAngleX), sinX = Math.sin(this.viewAngleX);
+        const y2 = y * cosX - z1 * sinX;
+        const z2 = y * sinX + z1 * cosX;
+        return { x: x1, y: -y2, depth: z2 };
+    }
+    toScreen(x, y, z) {
+        const p = this.project3D(x, y, z);
+        const scale = Math.min(this.width, this.height) / 28;
+        return {
+            x: this.width / 2 + p.x * scale,
+            y: this.height / 2 + p.y * scale,
+            depth: p.depth
+        };
+    }
+    render() {
+        if (!this.ctx) return;
+        // 性能修复②：同步精度档位（缓存判断，未变零开销）
+        this.dpr = QualityManager.dpr();
+        this._applySize();
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.restore();
+        ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        this.drawGroundPlane();
+        this.drawAxes3D();
+        this.drawCamera();
+    }
+    drawGroundPlane() {
+        const ctx = this.ctx;
+        const size = 5;
+        const enabled = State.camera.enabled;
+        const corners = [
+            this.toScreen(-size, -size, 0),
+            this.toScreen(size, -size, 0),
+            this.toScreen(size, size, 0),
+            this.toScreen(-size, size, 0)
+        ];
+        ctx.fillStyle = enabled ? 'rgba(74,108,181,0.06)' : 'rgba(200,200,200,0.06)';
+        ctx.beginPath();
+        ctx.moveTo(corners[0].x, corners[0].y);
+        for (let i = 1; i < 4; i++) ctx.lineTo(corners[i].x, corners[i].y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = enabled ? '#d8dbe0' : '#e4e6ea';
+        ctx.lineWidth = 0.5;
+        for (let i = -size; i <= size; i++) {
+            const p1 = this.toScreen(-size, i, 0);
+            const p2 = this.toScreen(size, i, 0);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+            const p3 = this.toScreen(i, -size, 0);
+            const p4 = this.toScreen(i, size, 0);
+            ctx.beginPath();
+            ctx.moveTo(p3.x, p3.y);
+            ctx.lineTo(p4.x, p4.y);
+            ctx.stroke();
+        }
+        ctx.strokeStyle = enabled ? '#a8acb2' : '#c8ccd2';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(corners[0].x, corners[0].y);
+        for (let i = 1; i < 4; i++) ctx.lineTo(corners[i].x, corners[i].y);
+        ctx.closePath();
+        ctx.stroke();
+    }
+    drawAxes3D() {
+        const ctx = this.ctx;
+        const origin = this.toScreen(0, 0, 0);
+        const axes = [
+            { end: this.toScreen(6, 0, 0), color: '#cc0000', label: 'x' },
+            { end: this.toScreen(0, 6, 0), color: '#2e7d32', label: 'y' },
+            { end: this.toScreen(0, 0, 6), color: '#1565c0', label: 'z' },
+        ];
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = 'round';
+        for (const ax of axes) {
+            ctx.strokeStyle = ax.color;
+            ctx.fillStyle = ax.color;
+            ctx.beginPath();
+            ctx.moveTo(origin.x, origin.y);
+            ctx.lineTo(ax.end.x, ax.end.y);
+            ctx.stroke();
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textBaseline = 'alphabetic';
+            ctx.textAlign = 'left';
+            ctx.fillText(ax.label, ax.end.x + 3, ax.end.y + 3);
+        }
+        ctx.fillStyle = '#1d2129';
+        ctx.beginPath();
+        ctx.arc(origin.x, origin.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    drawCamera() {
+        const ctx = this.ctx;
+        const { d, theta, phi } = State.camera;
+        const eye = sphericalToEye(d, theta, phi);
+        const camScreen = this.toScreen(eye[0], eye[1], eye[2]);
+        const origin = this.toScreen(0, 0, 0);
+        const enabled = State.camera.enabled;
+        ctx.strokeStyle = enabled ? 'rgba(123,31,162,0.6)' : 'rgba(150,150,150,0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(camScreen.x, camScreen.y);
+        ctx.lineTo(origin.x, origin.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        const groundProj = this.toScreen(eye[0], eye[1], 0);
+        ctx.strokeStyle = enabled ? 'rgba(123,31,162,0.3)' : 'rgba(150,150,150,0.2)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.moveTo(camScreen.x, camScreen.y);
+        ctx.lineTo(groundProj.x, groundProj.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = enabled ? 'rgba(123,31,162,0.25)' : 'rgba(150,150,150,0.15)';
+        ctx.beginPath();
+        ctx.arc(groundProj.x, groundProj.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        const camColor = enabled ? '#7b1fa2' : '#9ca0a6';
+        ctx.fillStyle = camColor;
+        ctx.beginPath();
+        ctx.arc(camScreen.x, camScreen.y, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.font = '11px sans-serif';
+        ctx.fillStyle = enabled ? '#7b1fa2' : '#5c6066';
+        ctx.textBaseline = 'alphabetic';
+        ctx.textAlign = 'left';
+        ctx.fillText('📷', camScreen.x + 10, camScreen.y - 6);
+        if (enabled) {
+            ctx.font = '9px monospace';
+            ctx.fillStyle = '#5c6066';
+            const txt = `θ=${theta.toFixed(0)}° φ=${phi.toFixed(0)}° d=${d.toFixed(1)}`;
+            ctx.fillText(txt, camScreen.x + 10, camScreen.y + 8);
+        }
+    }
+    setupEvents() {
+        if (!this.canvas) return;
+        this.canvas.addEventListener('mousedown', (e) => {
+            if (!State.camera.enabled) return;
+            this.isDragging = true;
+            this.lastMouseX = e.clientX;
+            this.lastMouseY = e.clientY;
+            this.canvas.style.cursor = 'grabbing';
+            e.preventDefault();
+        });
+        const onMouseUp = () => {
+            if (this.isDragging) {
+                this.isDragging = false;
+                this.canvas.style.cursor = State.camera.enabled ? 'grab' : 'default';
+            }
+        };
+        document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener('mousemove', (e) => {
+            if (!this.isDragging || !State.camera.enabled) return;
+            const dx = e.clientX - this.lastMouseX;
+            const dy = e.clientY - this.lastMouseY;
+            State.camera.phi += dx * 0.5;
+            State.camera.phi = ((State.camera.phi % 360) + 360) % 360;
+            State.camera.theta -= dy * 0.3;
+            State.camera.theta = Math.max(0, Math.min(89, State.camera.theta));
+            this.lastMouseX = e.clientX;
+            this.lastMouseY = e.clientY;
+            onCameraParamChange();
+            updateCameraSliders();
+        });
+        this.canvas.addEventListener('wheel', (e) => {
+            if (!State.camera.enabled) return;
+            e.preventDefault();
+            const d = State.camera.d;
+            const delta = d < 1 ? (e.deltaY > 0 ? 0.05 : -0.05)
+                       : d < 3 ? (e.deltaY > 0 ? 0.1  : -0.1)
+                               : (e.deltaY > 0 ? 0.5  : -0.5);
+            State.camera.d = Math.max(0.3, Math.min(30, State.camera.d + delta));
+            syncFocalFromD();
+            updateCameraSliders();
+            onCameraParamChange();
+        }, { passive: false });
+        this.canvas.addEventListener('dblclick', () => {
+            if (!State.camera.enabled) return;
+            State.camera.theta = 30;
+            State.camera.phi = 0;
+            State.camera.d = 10;
+            syncFocalFromD();
+            updateCameraSliders();
+            onCameraParamChange();
+        });
+    }
+}
+/* ==================== 辅助 ==================== */
+function formatNum(n) {
+    if (Math.abs(n) < 0.001) return '0';
+    if (Math.abs(n) < 1) return n.toFixed(2).replace(/\.?0+$/,'');
+    if (Math.abs(n) < 10) return n.toFixed(1).replace(/\.0$/,'');
+    return n.toFixed(0);
+}
+/* ==================== 矩阵 UI ==================== */
+function buildMatrixUI() {
+    const grid = document.getElementById('matrix-grid');
+    grid.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+            const idx = i * 3 + j;
+            const cell = document.createElement('div');
+            cell.className = 'matrix-cell';
+            cell.innerHTML = `
+                <div class="label">m<sub>${i+1}${j+1}</sub></div>
+                <input type="number" id="m-${idx}" value="${State.matrix[idx]}" step="0.1" />
+                <input type="range" id="r-${idx}" min="-3" max="3" value="${State.matrix[idx]}" step="0.01" />
+            `;
+            grid.appendChild(cell);
+            const numInput = cell.querySelector('input[type="number"]');
+            const rangeInput = cell.querySelector('input[type="range"]');
+            const update = (v) => {
+                v = parseFloat(v);
+                if (isNaN(v)) v = 0;
+                State.matrix[idx] = v;
+                numInput.value = v;
+                rangeInput.value = Math.max(-3, Math.min(3, v));
+                updateDeterminant();
+                updateCurveInfoPanel();
+                redrawAll();
+            };
+            numInput.addEventListener('input', (e) => update(e.target.value));
+            rangeInput.addEventListener('input', (e) => {
+                numInput.value = e.target.value;
+                update(e.target.value);
+            });
+        }
+    }
+    updateDeterminant();
+}
+function updateDeterminant() {
+    const d = det3(State.matrix);
+    const el = document.getElementById('det-value');
+    el.textContent = d.toFixed(3);
+    el.classList.toggle('det-zero', Math.abs(d) < 0.001);
+}
+function setMatrix(m) {
+    for (let i = 0; i < 9; i++) {
+        State.matrix[i] = m[i];
+        document.getElementById('m-' + i).value = m[i];
+        document.getElementById('r-' + i).value = Math.max(-3, Math.min(3, m[i]));
+    }
+    updateDeterminant();
+    updateCurveInfoPanel();
+    redrawAll();
+}
+const presets = {
+    identity:     { m: [1,0,0, 0,1,0, 0,0,1],            name: '恒等变换',           desc: '无变换，普通视角' },
+    vp_horizontal:{ m: [1,0,0, 0,1,0, 0.002,0,1],         name: '单灭点·水平',        desc: '竖直线汇聚到水平灭点' },
+    vp_vertical:  { m: [1,0,0, 0,1,0, 0,0.002,1],         name: '单灭点·竖直',        desc: '水平线汇聚到竖直灭点' },
+    vp_double:    { m: [1,0,0, 0,1,0, 0.0015,0.0015,1],   name: '双灭点',             desc: '两个方向均有灭点' },
+    vp_strong:    { m: [1,0,0, 0,1,0, 0.01,0,1],          name: '强透视',             desc: '圆→抛物线，强压缩' },
+    affine_shear: { m: [1,0.5,0, 0.3,1,0, 0,0,1],         name: '仿射错切',           desc: '纯仿射，无灭点' },
+    similarity:   { m: [1.5,0,0, 0,1.5,0, 0,0,1],         name: '相似缩放',           desc: '等比放大，保形' },
+};
+/* ==================== 函数管理 ==================== */
+function addFunction(expr) {
+    let fn;
+    try {
+        fn = parseExpression(expr);
+    } catch(e) {
+        showFuncError(e.message);
+        return false;
+    }
+    if (!fn) { showFuncError('表达式为空'); return false; }
+    try {
+        const t = fn(1);
+        if (typeof t !== 'number') throw new Error('返回值非数字');
+    } catch(e) {
+        showFuncError('函数无法求值: ' + e.message);
+        return false;
+    }
+    const funcObj = {
+        id: State.nextFuncId++,
+        expr: expr,
+        fn: fn,
+        color: State.colors[(State.functions.length) % State.colors.length],
+        visible: true,
+        latex: 'y = ' + exprToLatex(expr)
+    };
+    State.functions.push(funcObj);
+    updateFuncList();
+    redrawAll();
+    hideFuncError();
+    return true;
+}
+function removeFunction(id) {
+    State.functions = State.functions.filter(f => f.id !== id);
+    updateFuncList();
+    updateCurveInfoPanel();
+    redrawAll();
+}
+function toggleFunction(id) {
+    const f = State.functions.find(f => f.id === id);
+    if (f) { f.visible = !f.visible; updateFuncList(); updateCurveInfoPanel(); redrawAll(); }
+}
+function addConic(expr) {
+    let curveObj;
+    try {
+        curveObj = parseConic(expr);
+    } catch(e) {
+        showFuncError(e.message);
+        return false;
+    }
+    if (!curveObj) { showFuncError('方程为空'); return false; }
+    curveObj.id = State.nextFuncId++;
+    curveObj.color = State.colors[(State.functions.length) % State.colors.length];
+    curveObj.visible = true;
+    State.functions.push(curveObj);
+    updateFuncList();
+    updateCurveInfoPanel();
+    redrawAll();
+    hideFuncError();
+    return true;
+}
+function addCurve(expr) {
+    const trimmed = expr.trim();
+    if (!trimmed) { showFuncError('输入为空'); return false; }
+    const eqMatches = trimmed.match(/=/g) || [];
+    const eqCount = eqMatches.length;
+    if (eqCount === 0) {
+        return addFunction(trimmed);
+    }
+    if (eqCount > 1) {
+        return addConic(trimmed);
+    }
+    const eqIdx = trimmed.indexOf('=');
+    const lhs = trimmed.slice(0, eqIdx).trim();
+    const rhs = trimmed.slice(eqIdx + 1).trim();
+    if (lhs === 'y' || lhs === 'Y') {
+        return addFunction(rhs);
+    }
+    return addConic(trimmed);
+}
+function updateFuncList() {
+    const list = document.getElementById('func-list');
+    list.innerHTML = '';
+    for (const f of State.functions) {
+        const item = document.createElement('div');
+        item.className = 'func-item';
+        const exprSpan = document.createElement('span');
+        exprSpan.className = 'func-expr';
+        exprSpan.style.fontFamily = 'KaTeX_Main, var(--font)';
+        if (f.latex) {
+            renderKatex(exprSpan, f.latex);
+        } else {
+            exprSpan.textContent = f.expr;
+        }
+        item.innerHTML = `
+            <div class="color-dot" style="background:${f.color}; ${!f.visible ? 'opacity:0.3' : ''}"></div>
+            <span style="flex:1; overflow:hidden; text-overflow:ellipsis;"></span>
+            <button class="remove-btn" title="删除">×</button>
+        `;
+        item.querySelector('span[style*="flex:1"]').appendChild(exprSpan);
+        item.querySelector('.color-dot').addEventListener('click', () => toggleFunction(f.id));
+        item.querySelector('.remove-btn').addEventListener('click', () => removeFunction(f.id));
+        list.appendChild(item);
+    }
+    document.getElementById('status-func-count').textContent = State.functions.length;
+}
+function showFuncError(msg) {
+    const el = document.getElementById('func-error');
+    el.textContent = '⚠ ' + msg;
+    el.classList.add('show');
+    document.getElementById('input-wrapper').classList.add('error');
+    document.getElementById('status-text').textContent = '错误: ' + msg;
+}
+function hideFuncError() {
+    document.getElementById('func-error').classList.remove('show');
+    document.getElementById('input-wrapper').classList.remove('error');
+    document.getElementById('status-text').textContent = '就绪';
+}
+/* ==================== 初始化 ==================== */
+let normalRenderer, projectiveRenderer, cameraView3D;
+function init() {
+    buildMatrixUI();
+    
+    document.getElementById('tool-grid').addEventListener('click', (e) => {
+        State.view.showGrid = !State.view.showGrid;
+        e.currentTarget.classList.toggle('active', State.view.showGrid);
+        document.getElementById('show-grid').checked = State.view.showGrid;
+        redrawAll();
+    });
+    document.getElementById('tool-axes').addEventListener('click', (e) => {
+        State.view.showAxes = !State.view.showAxes;
+        e.currentTarget.classList.toggle('active', State.view.showAxes);
+        document.getElementById('show-axes').checked = State.view.showAxes;
+        redrawAll();
+    });
+    document.getElementById('tool-labels').addEventListener('click', (e) => {
+        State.view.showLabels = !State.view.showLabels;
+        e.currentTarget.classList.toggle('active', State.view.showLabels);
+        document.getElementById('show-labels').checked = State.view.showLabels;
+        redrawAll();
+    });
+    document.getElementById('tool-points').addEventListener('click', (e) => {
+        State.view.showCurvePoints = !State.view.showCurvePoints;
+        e.currentTarget.classList.toggle('active', State.view.showCurvePoints);
+        document.getElementById('show-curve-points').checked = State.view.showCurvePoints;
+        redrawAll();
+    });
+    document.getElementById('tool-roi').addEventListener('click', (e) => {
+        State.view.showROI = !State.view.showROI;
+        e.currentTarget.classList.toggle('active', State.view.showROI);
+        document.getElementById('show-roi').checked = State.view.showROI;
+        redrawAll();
+    });
+    
+    document.getElementById('tool-zoom-in').addEventListener('click', () => {
+        State.view.scale = Math.min(300, State.view.scale * 1.3);
+        document.getElementById('view-scale').value = Math.round(State.view.scale);
+        document.getElementById('view-scale-val').textContent = Math.round(State.view.scale);
+        redrawAll();
+    });
+    document.getElementById('tool-zoom-out').addEventListener('click', () => {
+        State.view.scale = Math.max(5, State.view.scale / 1.3);
+        document.getElementById('view-scale').value = Math.round(State.view.scale);
+        document.getElementById('view-scale-val').textContent = Math.round(State.view.scale);
+        redrawAll();
+    });
+    document.getElementById('tool-reset').addEventListener('click', () => {
+        State.view.scale = 50; State.view.ox = 0; State.view.oy = 0;
+        document.getElementById('view-scale').value = 50;
+        document.getElementById('view-ox').value = 0;
+        document.getElementById('view-oy').value = 0;
+        document.getElementById('view-scale-val').textContent = '50';
+        document.getElementById('view-ox-val').textContent = '0';
+        document.getElementById('view-oy-val').textContent = '0';
+        redrawAll();
+    });
+    document.getElementById('tool-screenshot').addEventListener('click', () => {
+        let targetCanvas;
+        if (State.view.displayMode === 'split') {
+            targetCanvas = document.getElementById('canvas-projective');
+        } else {
+            targetCanvas = document.getElementById('canvas-normal');
+        }
+        // 性能修复配套：截图前强制以全精度（max(dpr,2)）同步重绘一次，
+        // 保证导出 PNG 与原 V14 截图同为超采样分辨率，不受交互期降档影响。
+        const _saved = QualityManager.interacting;
+        QualityManager.interacting = false;
+        if (State.view.displayMode === 'split') {
+            if (projectiveRenderer) projectiveRenderer.render();
+        } else {
+            if (normalRenderer) normalRenderer.render();
+        }
+        QualityManager.interacting = _saved;
+        const link = document.createElement('a');
+        link.download = 'projective-viz-screenshot.png';
+        link.href = targetCanvas.toDataURL('image/png');
+        link.click();
+    });
+    setMatrix(presets.identity.m);
+    
+    document.getElementById('func-add').addEventListener('click', () => {
+        const input = document.getElementById('func-input');
+        if (addCurve(input.value)) {
+            input.value = '';
+            updatePreview();
+        }
+    });
+    document.getElementById('func-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('func-add').click();
+    });
+    
+    const inputEl = document.getElementById('func-input');
+    const previewEl = document.getElementById('latex-preview');
+    function updatePreview() {
+        const val = inputEl.value.trim();
+        if (val) {
+            renderKatex(previewEl, exprToLatex(val), { throwOnError: false, displayMode: false });
+        } else {
+            previewEl.innerHTML = '';
+        }
+    }
+    inputEl.addEventListener('input', updatePreview);
+    updatePreview();
+    (function() {
+        const trigger = document.getElementById('hint-trigger');
+        const hint = document.getElementById('input-bar-hint');
+        const closeBtn = document.getElementById('hint-close');
+        if (trigger && hint) {
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isShown = hint.classList.toggle('show');
+                trigger.classList.toggle('active', isShown);
+            });
+        }
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                hint.classList.remove('show');
+                if (trigger) trigger.classList.remove('active');
+            });
+        }
+        document.addEventListener('click', (e) => {
+            if (!hint.classList.contains('show')) return;
+            if (hint.contains(e.target) || (trigger && trigger.contains(e.target))) return;
+            hint.classList.remove('show');
+            if (trigger) trigger.classList.remove('active');
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && hint.classList.contains('show')) {
+                hint.classList.remove('show');
+                if (trigger) trigger.classList.remove('active');
+            }
+        });
+    })();
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const p = presets[btn.dataset.preset];
+            if (p) {
+                setMatrix(p.m);
+                document.getElementById('preset-desc').textContent = p.desc;
+            }
+        });
+    });
+    document.getElementById('mode-toggle').addEventListener('click', toggleCameraMode);
+    document.getElementById('cam-theta').addEventListener('input', e => {
+        State.camera.theta = parseFloat(e.target.value);
+        document.getElementById('cam-theta-val').textContent = e.target.value + '°';
+        onCameraParamChange();
+    });
+    document.getElementById('cam-phi').addEventListener('input', e => {
+        State.camera.phi = parseFloat(e.target.value);
+        document.getElementById('cam-phi-val').textContent = e.target.value + '°';
+        onCameraParamChange();
+    });
+    document.getElementById('cam-d').addEventListener('input', e => {
+        State.camera.d = parseFloat(e.target.value);
+        document.getElementById('cam-d-val').textContent = parseFloat(e.target.value).toFixed(1);
+        syncFocalFromD();
+        document.getElementById('cam-focal').value = State.camera.focal;
+        document.getElementById('cam-focal-val').textContent = State.camera.focal.toFixed(2);
+        onCameraParamChange();
+    });
+    document.getElementById('cam-focal').addEventListener('input', e => {
+        State.camera.focal = parseFloat(e.target.value);
+        document.getElementById('cam-focal-val').textContent = parseFloat(e.target.value).toFixed(2);
+        if (State.camera.focalAuto) {
+            State.camera.focalAuto = false;
+            document.getElementById('cam-focal-auto').checked = false;
+        }
+        onCameraParamChange();
+    });
+    document.getElementById('cam-focal-auto').addEventListener('change', e => {
+        State.camera.focalAuto = e.target.checked;
+        if (State.camera.focalAuto) {
+            syncFocalFromD();
+            document.getElementById('cam-focal').value = State.camera.focal;
+            document.getElementById('cam-focal-val').textContent = State.camera.focal.toFixed(2);
+            onCameraParamChange();
+        }
+    });
+    document.querySelectorAll('.cam-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const p = cameraPresets[btn.dataset.cam];
+            if (!p) return;
+            if (!State.camera.enabled) toggleCameraMode();
+            State.camera.theta = p.theta;
+            State.camera.phi = p.phi;
+            State.camera.d = p.d;
+            State.camera.focal = p.focal;
+            State.camera.focalAuto = true;
+            const faEl = document.getElementById('cam-focal-auto');
+            if (faEl) faEl.checked = true;
+            updateCameraSliders();
+            document.getElementById('cam-preset-desc').textContent = p.desc;
+            onCameraParamChange();
+        });
+    });
+    document.getElementById('show-grid').addEventListener('change', e => { State.view.showGrid = e.target.checked; document.getElementById('tool-grid').classList.toggle('active', State.view.showGrid); redrawAll(); });
+    document.getElementById('show-axes').addEventListener('change', e => { State.view.showAxes = e.target.checked; document.getElementById('tool-axes').classList.toggle('active', State.view.showAxes); redrawAll(); });
+    document.getElementById('show-labels').addEventListener('change', e => { State.view.showLabels = e.target.checked; document.getElementById('tool-labels').classList.toggle('active', State.view.showLabels); redrawAll(); });
+    document.getElementById('show-curve-points').addEventListener('change', e => { State.view.showCurvePoints = e.target.checked; document.getElementById('tool-points').classList.toggle('active', State.view.showCurvePoints); redrawAll(); });
+    document.getElementById('show-roi').addEventListener('change', e => { State.view.showROI = e.target.checked; document.getElementById('tool-roi').classList.toggle('active', State.view.showROI); redrawAll(); });
+    
+    document.getElementById('display-mode').addEventListener('change', e => {
+        State.view.displayMode = e.target.value;
+        redrawAll();
+    });
+    document.getElementById('view-scale').addEventListener('input', e => {
+        State.view.scale = parseFloat(e.target.value);
+        document.getElementById('view-scale-val').textContent = e.target.value;
+        redrawAll();
+    });
+    document.getElementById('view-ox').addEventListener('input', e => {
+        State.view.ox = parseFloat(e.target.value);
+        document.getElementById('view-ox-val').textContent = e.target.value;
+        redrawAll();
+    });
+    document.getElementById('view-oy').addEventListener('input', e => {
+        State.view.oy = parseFloat(e.target.value);
+        document.getElementById('view-oy-val').textContent = e.target.value;
+        redrawAll();
+    });
+    document.getElementById('sample-count').addEventListener('input', e => {
+        State.view.sampleCount = parseInt(e.target.value);
+        document.getElementById('sample-count-val').textContent = e.target.value;
+        redrawAll();
+    });
+    normalRenderer = new CanvasRenderer('canvas-normal', 'coord-normal', 'normal');
+    projectiveRenderer = new CanvasRenderer('canvas-projective', 'coord-projective', 'projective');
+    cameraView3D = new CameraView3D('canvas-3d');
+    window.addEventListener('resize', () => {
+        normalRenderer.resize();
+        projectiveRenderer.resize();
+        if (cameraView3D) cameraView3D.resize();
+        if (cameraView3D) cameraView3D.render();
+        redrawAll();
+    });
+    if (cameraView3D) cameraView3D.render();
+    updateCurveInfoPanel();
+    redrawAll();
+}
+let _lastDrawMode = null;
+function redrawAll() {
+    if (!normalRenderer || !projectiveRenderer) return;
+    
+    const mode = State.view.displayMode;
+    // 性能修复③：模式未变时不重复写面板 display/flex 样式（原来每帧都写，
+    // 会触发样式失效与布局检查）。画布尺寸只在模式切换/窗口变化时才需要重读。
+    const modeChanged = (_lastDrawMode !== mode);
+    if (modeChanged) {
+        _lastDrawMode = mode;
+        const panelNormal = document.getElementById('panel-normal');
+        const panelProjective = document.getElementById('panel-projective');
+        if (mode === 'split') {
+            panelNormal.style.display = 'flex';
+            panelNormal.style.flex = '1';
+            panelProjective.style.display = 'flex';
+            panelProjective.style.flex = '1';
+        } else {
+            panelNormal.style.display = 'flex';
+            panelNormal.style.flex = '1';
+            panelProjective.style.display = 'none';
+        }
+    }
+    
+    // 性能修复②：标记一次交互 → 本轮重绘用屏幕物理分辨率（DPR=1 屏上
+    // 几何/线宽/采样完全不变，仅跳过超采样），停止交互 160ms 后自动
+    // 全精度重绘（见 finalQualityRender）。
+    QualityManager.mark();
+    
+    if (mode === 'split') {
+        normalRenderer.mode = 'normal';
+        projectiveRenderer.mode = 'projective';
+        if (modeChanged) { normalRenderer.resize(); projectiveRenderer.resize(); }
+        normalRenderer.render();
+        projectiveRenderer.render();
+    } else {
+        normalRenderer.mode = mode;
+        if (modeChanged) normalRenderer.resize();
+        normalRenderer.render();
+    }
+    document.getElementById('status-samples').textContent = State.view.sampleCount;
+}
+/* 交互停止后的全精度收尾重绘：静止画面恢复 max(dpr,2) 超采样，
+   与原 V14 输出像素级一致（图像精度不变） */
+function finalQualityRender() {
+    if (!normalRenderer) return;
+    if (State.view.displayMode === 'split') {
+        if (projectiveRenderer) projectiveRenderer.render();
+        normalRenderer.render();
+    } else {
+        normalRenderer.render();
+    }
+    if (typeof cameraView3D !== 'undefined' && cameraView3D) cameraView3D.render();
+}
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
