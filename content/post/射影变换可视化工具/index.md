@@ -5,7 +5,7 @@ slug: "projective-viz"
 image: "cover.png"
 categories: ["数学"]
 tags: ["射影几何", "可视化", "Canvas"]
-draft: true
+draft: false
 ---
 
 <!-- 这是可选的博文模板。正文随意改写；定稿发布前记得删除上面的 draft: true 行。 -->
