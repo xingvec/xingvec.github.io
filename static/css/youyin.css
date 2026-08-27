@@ -1,45 +1,112 @@
 /* ============================================================
-   悠听 · 博客版 v3.0 样式
+   悠听 · 博客版 v3.1 样式
    白色卡片风 + 跟随博客淡青主题明暗自适应
+   v3.1: 上移避开暗色开关 / 默认迷你 / 闲置全隐 / 黑胶唱片美化
    ============================================================ */
 
 #yy-player {
     /* 跟随博客主题：湖水青 */
     --yy-acc: #0f8377;
+    --yy-acc2: #35a89a;
     --yy-acc-bg: rgba(15, 131, 119, 0.08);
 
     position: fixed;
-    bottom: 16px;
+    bottom: 84px;   /* v3.0 是 16px，上移让开左侧边栏的暗色开关 */
     left: 16px;
     width: 290px;
     background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 4px 24px rgba(31, 87, 80, 0.14), 0 1px 2px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(31, 87, 80, 0.06);
+    border-radius: 16px;
+    box-shadow: 0 6px 28px rgba(31, 87, 80, 0.13), 0 2px 4px rgba(0, 0, 0, 0.05);
     z-index: 9999;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 13px;
     color: #1a1a1a;
     overflow: hidden;
     user-select: none;
-    transition: box-shadow 0.2s, opacity 0.25s, transform 0.25s;
+    transition: box-shadow 0.2s, opacity 0.3s ease, transform 0.3s ease;
 }
 #yy-player:hover {
-    box-shadow: 0 6px 32px rgba(31, 87, 80, 0.18), 0 2px 4px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 34px rgba(31, 87, 80, 0.17), 0 2px 4px rgba(0, 0, 0, 0.06);
 }
+
+/* ---------- 闲置全隐状态（悬停感应区唤出）---------- */
+#yy-player.yy-hidden {
+    opacity: 0;
+    transform: translateX(-130%);
+    pointer-events: none;
+}
+#yy-hotspot {
+    position: fixed;
+    left: 8px;
+    bottom: 74px;
+    width: 64px;
+    height: 88px;
+    z-index: 9998;
+    display: none;
+    cursor: pointer;
+    border-radius: 999px;
+}
+#yy-hotspot.on { display: block; }
 
 /* ---------- 暗色（博客 data-scheme 在 html 上）---------- */
 html[data-scheme="dark"] #yy-player {
     --yy-acc: #7fd8cd;
+    --yy-acc2: #a9e5dd;
     --yy-acc-bg: rgba(127, 216, 205, 0.12);
     background: #212e2c;
     color: rgba(235, 250, 247, 0.92);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+    border-color: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.5);
 }
+
+/* ---------- 黑胶唱片 ---------- */
+.yy-disc {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+}
+.yy-cover {
+    animation: yy-vinyl 9s linear infinite;
+    animation-play-state: paused;    /* 冻结在当前角度，恢复播放接着转 */
+}
+#yy-player.yy-playing .yy-cover {
+    animation-play-state: running;   /* 播放中旋转 */
+}
+/* 唱片纹路（静态盖在旋转的封面上，制造沟槽感） */
+.yy-disc::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: repeating-radial-gradient(circle at center,
+        transparent 0 3px, rgba(0, 0, 0, 0.04) 3px 4px);
+    pointer-events: none;
+    z-index: 1;
+}
+/* 中心轴孔 */
+.yy-disc::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 16%;
+    height: 16%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.12);
+    z-index: 2;
+    pointer-events: none;   /* 不截胡点击，点封面=点唱片任意处都能恢复 */
+}
+html[data-scheme="dark"] .yy-disc::after { background: #212e2c; }
+@keyframes yy-vinyl { to { transform: rotate(360deg); } }
 
 /* ---------- 最小化：竖排（封面 + 播放钮）---------- */
 #yy-player.yy-mini {
     width: 44px;
-    border-radius: 12px;
+    border-radius: 999px;
     padding: 4px;
     display: flex;
     flex-direction: column;
@@ -53,7 +120,6 @@ html[data-scheme="dark"] #yy-player {
 #yy-player.yy-mini .yy-cover,
 #yy-player.yy-mini .yy-cover-ph {
     width: 36px; height: 36px;
-    border-radius: 8px;
     cursor: pointer;
 }
 #yy-player.yy-mini .yy-cover-ph { font-size: 14px; }
@@ -75,7 +141,13 @@ html[data-scheme="dark"] #yy-player {
     transition: transform 0.15s, box-shadow 0.15s;
 }
 .yy-mini-play:hover { transform: scale(1.1); }
-.yy-mini-play svg { width: 12px; height: 12px; fill: #12332f; }
+.yy-mini-play {
+    background: linear-gradient(135deg, var(--yy-acc), var(--yy-acc2));
+    box-shadow: 0 2px 8px rgba(15, 131, 119, 0.35);
+}
+html[data-scheme="dark"] .yy-mini-play { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); }
+.yy-mini-play svg { width: 12px; height: 12px; fill: #fff; }
+html[data-scheme="dark"] .yy-mini-play svg { fill: #12332f; }
 #yy-player.yy-mini .yy-mini-play { display: flex; }
 
 /* ---------- 抽屉 ---------- */
@@ -137,7 +209,7 @@ html[data-scheme="dark"] .yy-tab:hover { color: rgba(235, 250, 247, 0.7); }
 
 .yy-cover, .yy-cover-ph {
     width: 36px; height: 36px;
-    border-radius: 8px;
+    border-radius: 50%;
     flex-shrink: 0;
     object-fit: cover;
 }
@@ -207,7 +279,7 @@ html[data-scheme="dark"] .yy-min-btn:hover { background: rgba(255, 255, 255, 0.0
 }
 html[data-scheme="dark"] .yy-progress { background: rgba(255, 255, 255, 0.12); }
 .yy-progress-fill {
-    height: 100%; background: var(--yy-acc);
+    height: 100%; background: linear-gradient(90deg, var(--yy-acc), var(--yy-acc2));
     border-radius: 2px; width: 0%;
     transition: width 0.1s linear;
     position: relative;
@@ -243,7 +315,7 @@ html[data-scheme="dark"] .yy-ctrl-btn { color: rgba(235, 250, 247, 0.6); }
 
 .yy-play-btn {
     width: 34px; height: 34px;
-    background: var(--yy-acc);
+    background: linear-gradient(135deg, var(--yy-acc), var(--yy-acc2));
     color: #fff;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
@@ -251,8 +323,9 @@ html[data-scheme="dark"] .yy-ctrl-btn { color: rgba(235, 250, 247, 0.6); }
     border: none; cursor: pointer;
     transition: all 0.15s;
     margin: 0 4px;
+    box-shadow: 0 2px 8px rgba(15, 131, 119, 0.3);
 }
-html[data-scheme="dark"] .yy-play-btn { color: #12332f; }
+html[data-scheme="dark"] .yy-play-btn { color: #12332f; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); }
 .yy-play-btn:hover { transform: scale(1.08); }
 
 .yy-mode-btn {
@@ -462,3 +535,10 @@ html[data-scheme="dark"] .yy-lrc-empty { color: rgba(235, 250, 247, 0.35); }
     margin-bottom: 6px;
 }
 @keyframes yy-spin { to { transform: rotate(360deg); } }
+
+/* ---------- 访客系统开了"减少动态效果"：唱片停转、隐身改淡出 ---------- */
+@media (prefers-reduced-motion: reduce) {
+    .yy-cover { animation: none; }
+    #yy-player { transition: opacity 0.3s ease; }
+    #yy-player.yy-hidden { transform: none; }
+}

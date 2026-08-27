@@ -117,8 +117,10 @@
             '</div>' +
             '<div class="yy-base">' +
               '<div class="yy-now-playing">' +
-                '<div class="yy-cover-ph" id="yy-cover-ph">♪</div>' +
-                '<img class="yy-cover" id="yy-cover-img" style="display:none" alt="封面" />' +
+                '<span class="yy-disc">' +
+                  '<div class="yy-cover-ph" id="yy-cover-ph">♪</div>' +
+                  '<img class="yy-cover" id="yy-cover-img" style="display:none" alt="封面" />' +
+                '</span>' +
                 '<div class="yy-np-info">' +
                   '<div class="yy-np-name" id="yy-np-name">未播放</div>' +
                   '<div class="yy-np-artist" id="yy-np-artist">—</div>' +
@@ -181,14 +183,51 @@
             });
         });
 
-        /* 最小化 / 恢复 */
+        /* ---------- 最小化 / 恢复 / 闲置全隐 ---------- */
+        /* 隐身后左下角留一块隐形感应区，鼠标停靠即唤出 */
+        var hotspot = document.createElement('div');
+        hotspot.id = 'yy-hotspot';
+        hotspot.title = '悠听';
+        document.body.appendChild(hotspot);
+
+        var IDLE_MS = 30000, idleTimer = null;
+        function disarmIdleHide() {
+            if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+            hotspot.classList.remove('on');
+        }
+        function armIdleHide() {
+            disarmIdleHide();
+            if (!root.classList.contains('yy-mini')) return;   /* 展开模式永不隐藏 */
+            idleTimer = setTimeout(function () {
+                root.classList.add('yy-hidden');
+                hotspot.classList.add('on');
+            }, IDLE_MS);
+        }
+        function revealFromHotspot() {
+            if (!hotspot.classList.contains('on')) return;
+            root.classList.remove('yy-hidden');
+            hotspot.classList.remove('on');
+            armIdleHide();
+        }
+        hotspot.addEventListener('mouseenter', revealFromHotspot);
+        hotspot.addEventListener('pointerdown', revealFromHotspot);
+
         document.getElementById('yy-btn-min').addEventListener('click', function () {
             root.classList.add('yy-mini');
+            armIdleHide();
         });
-        var restoreFn = function () { root.classList.remove('yy-mini'); };
+        var restoreFn = function () {
+            root.classList.remove('yy-mini');
+            root.classList.remove('yy-hidden');
+            disarmIdleHide();
+        };
         document.getElementById('yy-cover-img').addEventListener('click', restoreFn);
         document.getElementById('yy-cover-ph').addEventListener('click', restoreFn);
         document.getElementById('yy-mini-play').addEventListener('click', togglePlay);
+
+        /* 页面加载即进入迷你模式，30 秒无操作后完全隐身 */
+        root.classList.add('yy-mini');
+        armIdleHide();
 
         /* 数据源切换 */
         document.getElementById('yy-server-badge').addEventListener('click', function () {
@@ -300,11 +339,13 @@
         audio.addEventListener('ended', onEnded);
         audio.addEventListener('play', function () {
             isPlaying = true;
+            root.classList.add('yy-playing');
             document.getElementById('yy-btn-play').textContent = '⏸';
             document.getElementById('yy-mini-play-svg').innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
         });
         audio.addEventListener('pause', function () {
             isPlaying = false;
+            root.classList.remove('yy-playing');
             document.getElementById('yy-btn-play').textContent = '▶';
             document.getElementById('yy-mini-play-svg').innerHTML = '<path d="M8 5v14l11-7z"/>';
         });
