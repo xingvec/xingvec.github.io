@@ -1,57 +1,43 @@
 /* =========================================================
-   淡青清新 · 自定义配色
-   机制：主题会在加载完默认样式之后 import 本文件，
-   所以这里重新赋值的变量永远生效。想改哪个写哪个。
+   淡青清新 + 方案C：青雾粒子（配色沿用，另加 footer 脚本）
+   本文件 = 你的淡青 custom.scss + 透明 body 让出粒子舞台
    ========================================================= */
 
-/* ---------- 浅色模式 ---------- */
+/* ---------- 浅色 ---------- */
 :root {
-    /* 页面底色：淡青 */
     --body-background: #eaf6f4;
-
-    /* 卡片保持纯白，衬淡青底更清爽（默认即白，不用写） */
-
-    /* 强调色：链接 / 按钮 / 菜单选中 / 标签 —— 湖水青 */
     --accent-color:        #0f8377;
     --accent-color-darker: #0a6e63;
-
-    /* 正文换成微冷灰绿，比默认略深，更易读 */
     --body-text-color: #5f6b69;
-
-    /* 引用块、表格斑马纹带一点青 */
     --blockquote-background-color: rgb(240, 250, 248);
     --tr-even-background-color:    #eff6f4;
-
-    /* 文内链接划过时的青色高亮底（R, G, B 写法） */
     --link-background-color: 160, 215, 205;
 }
 
 [data-scheme="light"] {
-    /* 代码块底色：极淡青（替换掉原来的 #fafafa） */
     --pre-background-color: #eff7f5;
 }
 
-/* ---------- 暗色模式：青夜 ---------- */
+/* ---------- 暗色：青夜 ---------- */
 :root {
     &[data-scheme="dark"] {
-        /* 深青夜空底 + 墨青卡片（选择器写法必须和主题一致才能覆盖成功） */
         --body-background:      #16211f;
         --card-background:      #212e2c;
         --accent-color:         #7fd8cd;
         --accent-color-darker:  #a9e5dd;
         --accent-color-text:    #12332f;
-
         --body-text-color: rgba(230, 245, 242, 0.75);
         --card-text-color-main:      rgba(235, 250, 247, 0.92);
         --card-text-color-secondary: rgba(235, 250, 247, 0.72);
         --card-text-color-tertiary:  rgba(235, 250, 247, 0.55);
-
         --table-border-color:       #3a4c49;
         --tr-even-background-color: #253533;
     }
 }
-
 [data-scheme="dark"] {
-    /* 代码块也染成青黑 */
     --pre-background-color: #202e2b;
 }
+
+/* ---------- 粒子舞台：颜色垫在 html，画布层飘浮其上 ---------- */
+html { background: var(--body-background); }
+body { background: transparent; }   /* canvas 以 z-index:-1 铺在内容后面 */
