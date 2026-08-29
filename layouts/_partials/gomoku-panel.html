@@ -176,9 +176,15 @@ html[data-scheme="dark"] .gq-act { border-color: rgba(255, 255, 255, 0.12); }
     padding: 16px;
     width: min(92vw, 620px);
     max-height: 94vh;
+    overflow: auto;   /* 兜底：极端矮屏可滚动，不再裁切 */
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
     animation: gq-rise 0.25s ease;
 }
+/* 全屏时顶栏 ⤢ 与卡片右上角 ✕ 同位重叠：⤢ 已多余，隐藏 */
+.gq-fs #gq-full { display: none; }
+/* 1:1 棋盘按可用高度限宽，给下方状态/难度/操作区让位 */
+.gq-fs .gq-board { width: min(100%, calc(94vh - 215px)); margin: 0 auto; }
+.gq-panel .gq-board { width: min(100%, calc(100vh - 330px)); margin: 0 auto; }
 @keyframes gq-rise { from { transform: translateY(14px); opacity: 0; } }
 .gq-fs-exit {
     position: absolute; top: 14px; right: 18px;
@@ -472,10 +478,35 @@ html[data-scheme="dark"] .gq-fs-exit { background: rgba(255, 255, 255, 0.1); }
         $('gq-undo').addEventListener('click', undoMove);
         $('gq-reset').addEventListener('click', initGame);
         $('gq-close').addEventListener('click', closePanel);
+        /* 难度切换：换难度即开新局 */
+        ['easy', 'normal', 'hard'].forEach(function (lv) {
+            var b = $('gq-' + lv);
+            if (b) b.addEventListener('click', function () {
+                if (difficulty === lv && !moveHistory.length) return;
+                difficulty = lv;
+                ['easy', 'normal', 'hard'].forEach(function (k) {
+                    var bb = $('gq-' + k);
+                    if (bb) bb.classList.toggle('active', k === lv);
+                });
+                initGame();
+            });
+        });
         document.addEventListener('click', function (e) {
             if (!isOpen()) return;
-            if (e.target.closest && (e.target.closest('#gq-panel') || e.target.closest('#gq-menu-item'))) return;
-            if (e.target.closest && (e.target.closest('#gq-fs') || e.target.closest('#gq-overlay'))) return;
+            /* 用 composedPath（dispatch 时快照）判断：落子会重建棋盘节点，
+               e.target 冒泡到此处时已脱离 DOM，closest 会沿断链误判为外部点击 */
+            var ids = ['gq-panel', 'gq-menu-item', 'gq-fs', 'gq-overlay'];
+            var path = e.composedPath ? e.composedPath() : null, hit = false;
+            if (path) {
+                for (var i = 0; i < path.length; i++) {
+                    if (path[i] && path[i].id && ids.indexOf(path[i].id) >= 0) { hit = true; break; }
+                }
+            } else if (e.target && e.target.closest) {
+                for (var j = 0; j < ids.length; j++) {
+                    if (e.target.closest('#' + ids[j])) { hit = true; break; }
+                }
+            }
+            if (hit) return;
             closePanel();
         });
         document.addEventListener('keydown', function (e) {
