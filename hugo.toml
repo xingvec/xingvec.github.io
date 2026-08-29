@@ -61,6 +61,8 @@ hasCJKLanguage = true
       type = "tag-cloud"
       [params.widgets.homepage.params]
         limit = 10
+    [[params.widgets.homepage]]
+      type = "gomoku"
 
     [[params.widgets.page]]
       type = "toc"
