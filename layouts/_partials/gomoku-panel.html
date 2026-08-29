@@ -1,0 +1,488 @@
+{{/* 对弈 · 五子棋：左侧栏菜单按钮 + 弹出面板（默认隐藏），由 footer/custom.html 引入 */}}
+<div id="gq-panel" class="gq-panel">
+    <div class="gq-panel-head">
+        <span>对弈 · 五子棋</span>
+        <button class="gq-mini-btn" id="gq-close" title="收起">✕</button>
+    </div>
+    <div class="gq-body" id="gq-game">
+        <div class="gq-topbar">
+            <div class="gq-turn" id="gq-turn"><span class="gq-dot gq-black"></span><span>玩家 (黑)</span></div>
+            <button class="gq-mini-btn" id="gq-full" title="放大棋盘">⤢</button>
+        </div>
+        <div class="gq-board-slot" id="gq-slot"><div class="gq-board" id="gq-board"></div></div>
+        <div class="gq-status" id="gq-status">等待落子...</div>
+        <div class="gq-levels">
+            <button class="gq-level" id="gq-easy">简单</button>
+            <button class="gq-level active" id="gq-normal">普通</button>
+            <button class="gq-level" id="gq-hard">困难</button>
+        </div>
+        <div class="gq-actions">
+            <button class="gq-act" id="gq-undo">悔棋</button>
+            <button class="gq-act" id="gq-reset">重开</button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ============ 对弈 · 五子棋 弹出面板（作用域 gq-，不影响主题） ============ */
+
+/* 左侧栏菜单里的按钮：结构模仿主题菜单项，自动继承样式 */
+#gq-menu-item a { cursor: pointer; }
+#gq-menu-item a svg { color: var(--accent-color); flex-shrink: 0; }
+
+/* 弹出面板：白卡跟主题变量走，明暗自适应 */
+.gq-panel {
+    position: fixed;
+    z-index: 9997;
+    background: var(--card-background);
+    color: var(--card-text-color-main);
+    border-radius: 16px;
+    padding: 14px;
+    width: min(360px, calc(100vw - 24px));
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-10px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+}
+.gq-panel.open { opacity: 1; visibility: visible; transform: none; }
+
+.gq-panel-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+    font-weight: 700; font-size: 14px;
+}
+.gq-panel-head .gq-mini-btn {
+    background: transparent; color: var(--card-text-color-secondary);
+    border: 1px solid rgba(0,0,0,0.12);
+}
+html[data-scheme="dark"] .gq-panel-head .gq-mini-btn { border-color: rgba(255,255,255,0.15); }
+.gq-panel-head .gq-mini-btn:hover { background: var(--accent-color); color: #fff; }
+
+.gq-body { display: flex; flex-direction: column; gap: 8px; }
+
+.gq-topbar { display: flex; align-items: center; justify-content: space-between; }
+.gq-turn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600;
+    color: var(--card-text-color-secondary);
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 999px; padding: 3px 10px;
+}
+html[data-scheme="dark"] .gq-turn { background: rgba(255, 255, 255, 0.06); }
+.gq-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.gq-dot.gq-black { background: radial-gradient(circle at 35% 35%, #666, #000); }
+.gq-dot.gq-white { background: radial-gradient(circle at 35% 35%, #fff, #ddd); border: 1px solid rgba(0,0,0,0.15); }
+
+.gq-mini-btn {
+    border: none; cursor: pointer;
+    width: 26px; height: 26px; border-radius: 8px;
+    background: var(--accent-color); color: #fff;
+    font-size: 13px; line-height: 1;
+    transition: transform 0.15s;
+}
+.gq-mini-btn:hover { transform: scale(1.1); }
+
+/* 棋盘：木色底 + 15x15 网格，宽度自适应容器（面板/全屏都适用） */
+.gq-board-slot { position: relative; }
+.gq-board {
+    aspect-ratio: 1 / 1;
+    display: grid;
+    background-color: #e9cfa4;
+    background-image:
+        radial-gradient(circle at 30% 25%, rgba(255,255,255,0.25), transparent 55%),
+        url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' filter='url(%23n)' opacity='0.07'/%3E%3C/svg%3E");
+    border-radius: 10px;
+    box-shadow: inset 0 0 0 1px rgba(139, 90, 43, 0.35), 0 2px 8px rgba(0, 0, 0, 0.1);
+    user-select: none;
+}
+.gq-cell { position: relative; cursor: pointer; }
+.gq-cell::before {
+    content: ''; position: absolute; top: 50%; left: 0;
+    width: 100%; height: 1px; background: rgba(139, 90, 43, 0.75);
+    transform: translateY(-0.5px);
+}
+.gq-cell::after {
+    content: ''; position: absolute; left: 50%; top: 0;
+    height: 100%; width: 1px; background: rgba(139, 90, 43, 0.75);
+    transform: translateX(-0.5px);
+}
+.gq-star {
+    position: absolute; left: 50%; top: 50%;
+    width: 22%; aspect-ratio: 1; transform: translate(-50%, -50%);
+    background: rgba(139, 90, 43, 0.9); border-radius: 50%;
+    z-index: 1;
+}
+.gq-piece {
+    position: absolute; left: 50%; top: 50%;
+    width: 86%; aspect-ratio: 1;
+    transform: translate(-50%, -50%) scale(1);
+    border-radius: 50%; z-index: 2;
+    animation: gq-pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.gq-piece.gq-b { background: radial-gradient(circle at 35% 35%, #666, #000); box-shadow: 1px 2px 3px rgba(0,0,0,0.4); }
+.gq-piece.gq-w { background: radial-gradient(circle at 35% 35%, #fff, #ddd); box-shadow: 1px 2px 3px rgba(0,0,0,0.25); }
+.gq-piece.gq-last::after {
+    content: ''; position: absolute; left: 50%; top: 50%;
+    width: 22%; aspect-ratio: 1; transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: #e0524d;
+}
+@keyframes gq-pop { 0% { transform: translate(-50%,-50%) scale(0); opacity: 0; } 100% { transform: translate(-50%,-50%) scale(1); opacity: 1; } }
+
+.gq-status { font-size: 12px; font-weight: 600; color: var(--accent-color); min-height: 16px; }
+.gq-status.thinking { color: #d97706; animation: gq-pulse 1.2s ease-in-out infinite; }
+@keyframes gq-pulse { 50% { opacity: 0.45; } }
+
+.gq-levels { display: flex; gap: 4px; background: rgba(0, 0, 0, 0.05); border-radius: 10px; padding: 3px; }
+html[data-scheme="dark"] .gq-levels { background: rgba(255, 255, 255, 0.06); }
+.gq-level {
+    flex: 1; border: none; cursor: pointer;
+    padding: 5px 0; font-size: 12px; border-radius: 8px;
+    background: transparent; color: var(--card-text-color-secondary);
+    transition: all 0.15s;
+}
+.gq-level:hover { color: var(--card-text-color-main); }
+.gq-level.active {
+    background: var(--card-background); font-weight: 700; color: var(--accent-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.gq-actions { display: flex; gap: 6px; }
+.gq-act {
+    flex: 1; border: 1px solid rgba(0, 0, 0, 0.1); cursor: pointer;
+    padding: 6px 0; font-size: 12px; border-radius: 8px;
+    background: transparent; color: var(--card-text-color-secondary);
+    transition: all 0.15s;
+}
+html[data-scheme="dark"] .gq-act { border-color: rgba(255, 255, 255, 0.12); }
+.gq-act:hover { border-color: var(--accent-color); color: var(--accent-color); }
+.gq-act:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ---- 全屏对弈 ---- */
+.gq-fs {
+    position: fixed; inset: 0; z-index: 10000;
+    background: rgba(20, 30, 28, 0.55);
+    backdrop-filter: blur(3px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 4vh 4vw;
+}
+.gq-fs.hidden { display: none; }
+.gq-fs-card {
+    background: var(--card-background);
+    border-radius: 18px;
+    padding: 16px;
+    width: min(92vw, 620px);
+    max-height: 94vh;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    animation: gq-rise 0.25s ease;
+}
+@keyframes gq-rise { from { transform: translateY(14px); opacity: 0; } }
+.gq-fs-exit {
+    position: absolute; top: 14px; right: 18px;
+    border: none; cursor: pointer; font-size: 20px;
+    background: rgba(0, 0, 0, 0.08); color: inherit;
+    width: 34px; height: 34px; border-radius: 50%;
+}
+html[data-scheme="dark"] .gq-fs-exit { background: rgba(255, 255, 255, 0.1); }
+.gq-fs-exit:hover { background: var(--accent-color); color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+    .gq-piece { animation: none; }
+    .gq-status.thinking { animation: none; }
+    .gq-panel { transition: opacity 0.2s ease; }
+}
+</style>
+
+<script>
+(function () {
+    'use strict';
+    /* ============ 对弈 · 五子棋（移植自禅意五子棋，去 Tailwind 依赖）============ */
+    var SIZE = 15, EMPTY = 0, BLACK = 1, WHITE = 2;
+    var board, isPlayerTurn, isGameOver, difficulty = 'normal', moveHistory;
+
+    function $(id) { return document.getElementById(id); }
+    function ready() { return $('gq-board') && $('gq-game') && document.getElementById('main-menu'); }
+
+    /* ---------- 左侧栏菜单按钮 ---------- */
+    var STONES_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="5"/><circle cx="15" cy="15" r="5"/></svg>';
+    function injectMenuItem() {
+        if (document.getElementById('gq-menu-item')) return true;
+        var menu = document.getElementById('main-menu');
+        var bottom = menu.querySelector('.menu-bottom-section');
+        var li = document.createElement('li');
+        li.id = 'gq-menu-item';
+        li.innerHTML = '<a role="button" tabindex="0" href="javascript:void(0)">' + STONES_SVG + '<span>对弈</span></a>';
+        if (bottom) menu.insertBefore(li, bottom); else menu.appendChild(li);
+        li.addEventListener('click', togglePanel);
+        return true;
+    }
+
+    /* ---------- 面板开关 ---------- */
+    var panel;
+    function isOpen() { return panel.classList.contains('open'); }
+    function placePanel() {
+        var aside = document.querySelector('.left-sidebar');
+        var vw = window.innerWidth, vh = window.innerHeight;
+        var aR = aside ? aside.getBoundingClientRect() : null;
+        var p = panel, bR = $('gq-menu-item').getBoundingClientRect();
+        if (aR && vw - aR.right >= 392) {
+            /* 桌面：贴在左侧栏右边弹出，顶对齐按钮（上下留足空间） */
+            p.style.left = Math.min(aR.right + 10, vw - 372) + 'px';
+            p.style.top = Math.max(12, Math.min(bR.top, vh - p.offsetHeight - 16)) + 'px';
+            p.style.bottom = 'auto';
+            p.style.transform = 'none';
+        } else {
+            /* 窄屏：底部居中卡片 */
+            p.style.left = '50%';
+            p.style.top = 'auto';
+            p.style.bottom = '12px';
+            p.style.transform = 'translateX(-50%)';
+        }
+    }
+    function openPanel() {
+        placePanel();
+        panel.classList.add('open');
+        $('gq-menu-item').classList.add('current');
+    }
+    function closePanel() {
+        /* 若棋盘正被搬到全屏弹窗里，先收全屏再关面板 */
+        var fs = document.getElementById('gq-fs');
+        if (fs && !fs.classList.contains('hidden') && fs.contains($('gq-game'))) window.gqExitFs();
+        panel.classList.remove('open');
+        $('gq-menu-item').classList.remove('current');
+    }
+    function togglePanel() { isOpen() ? closePanel() : openPanel(); }
+
+    /* ---------- 渲染 ---------- */
+    function renderBoard() {
+        var el = $('gq-board');
+        el.style.gridTemplateColumns = 'repeat(' + SIZE + ', 1fr)';
+        el.style.gridTemplateRows = 'repeat(' + SIZE + ', 1fr)';
+        el.innerHTML = '';
+        var last = moveHistory.length ? moveHistory[moveHistory.length - 1] : null;
+        for (var y = 0; y < SIZE; y++) {
+            for (var x = 0; x < SIZE; x++) {
+                var cell = document.createElement('div');
+                cell.className = 'gq-cell';
+                if (isStar(x, y)) cell.innerHTML = '<span class="gq-star"></span>';
+                if (board[y][x] !== EMPTY) {
+                    var p = document.createElement('div');
+                    p.className = 'gq-piece ' + (board[y][x] === BLACK ? 'gq-b' : 'gq-w');
+                    if (last && last.x === x && last.y === y) p.classList.add('gq-last');
+                    cell.appendChild(p);
+                }
+                (function (cx, cy) {
+                    cell.addEventListener('click', function () { handleCellClick(cx, cy); });
+                })(x, y);
+                el.appendChild(cell);
+            }
+        }
+    }
+    function isStar(x, y) { return [3, 7, 11].indexOf(x) >= 0 && [3, 7, 11].indexOf(y) >= 0; }
+
+    /* ---------- 流程 ---------- */
+    function initGame() {
+        board = Array.apply(null, Array(SIZE)).map(function () {
+            return Array.apply(null, Array(SIZE)).map(function () { return EMPTY; });
+        });
+        isPlayerTurn = true; isGameOver = false; moveHistory = [];
+        renderBoard(); updateUI();
+        var ov0 = document.getElementById('gq-overlay');
+        if (ov0) hideWinner();
+        syncUndo();
+    }
+    function handleCellClick(x, y) {
+        if (isGameOver || !isPlayerTurn || board[y][x] !== EMPTY) return;
+        placePiece(x, y, BLACK);
+        if (checkWin(x, y, BLACK)) { endGame(BLACK); return; }
+        isPlayerTurn = false; updateUI();
+        setTimeout(computerMove, 350);
+    }
+    function placePiece(x, y, role) {
+        board[y][x] = role;
+        moveHistory.push({ x: x, y: y, role: role });
+        renderBoard();
+    }
+    function undoMove() {
+        if (isGameOver || !moveHistory.length || !isPlayerTurn) return;
+        var steps = moveHistory.length >= 2 ? 2 : 1;
+        while (steps--) {
+            var m = moveHistory.pop();
+            board[m.y][m.x] = EMPTY;
+        }
+        isPlayerTurn = true;
+        renderBoard(); updateUI(); syncUndo();
+    }
+    function syncUndo() {
+        $('gq-undo').disabled = !moveHistory.length || isGameOver;
+    }
+    function updateUI() {
+        if (isGameOver) return;
+        var t = $('gq-turn'), s = $('gq-status');
+        if (isPlayerTurn) {
+            t.innerHTML = '<span class="gq-dot gq-black"></span><span>玩家 (黑)</span>';
+            s.textContent = '等待落子...'; s.className = 'gq-status';
+        } else {
+            t.innerHTML = '<span class="gq-dot gq-white"></span><span>电脑 (白)</span>';
+            s.textContent = 'AI 思考中...'; s.className = 'gq-status thinking';
+        }
+        syncUndo();
+    }
+    function endGame(winner) {
+        isGameOver = true;
+        $('gq-status').textContent = '对局结束';
+        $('gq-winner-text').textContent = winner === BLACK ? '恭喜，你赢了！' : '很遗憾，电脑赢了。';
+        var ov = $('gq-overlay');
+        ov.classList.remove('hidden');
+        requestAnimationFrame(function () { ov.classList.add('show'); });
+        syncUndo();
+    }
+    function hideWinner() {
+        var ov = $('gq-overlay');
+        ov.classList.add('hidden'); ov.classList.remove('show');
+    }
+
+    /* ---------- AI ---------- */
+    function computerMove() {
+        if (isGameOver) return;
+        var bestScore = -Infinity, bestMoves = [];
+        var dw = difficulty === 'easy' ? 0.5 : (difficulty === 'normal' ? 1.0 : 1.2);
+        for (var y = 0; y < SIZE; y++) {
+            for (var x = 0; x < SIZE; x++) {
+                if (board[y][x] !== EMPTY) continue;
+                var a = evaluatePoint(x, y, WHITE), d = evaluatePoint(x, y, BLACK);
+                var s = a + d * dw;
+                if (a >= 100000) s = 200000;
+                else if (d >= 100000) s = 100000;
+                if (s > bestScore) { bestScore = s; bestMoves = [{ x: x, y: y }]; }
+                else if (s === bestScore) bestMoves.push({ x: x, y: y });
+            }
+        }
+        if (!bestMoves.length) {
+            var c = Math.floor(SIZE / 2);
+            placePiece(board[c][c] === EMPTY ? c : c + 1, board[c][c] === EMPTY ? c : c + 1, WHITE);
+        } else {
+            var mv = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+            placePiece(mv.x, mv.y, WHITE);
+        }
+        var lm = moveHistory[moveHistory.length - 1];
+        if (checkWin(lm.x, lm.y, WHITE)) { endGame(WHITE); return; }
+        isPlayerTurn = true; updateUI();
+    }
+    function checkWin(x, y, role) {
+        var dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+        for (var k = 0; k < 4; k++) {
+            var dx = dirs[k][0], dy = dirs[k][1], count = 1, i = 1;
+            while (true) {
+                var nx = x + dx * i, ny = y + dy * i;
+                if (nx < 0 || nx >= SIZE || ny < 0 || ny >= SIZE || board[ny][nx] !== role) break;
+                count++; i++;
+            }
+            i = 1;
+            while (true) {
+                var nx2 = x - dx * i, ny2 = y - dy * i;
+                if (nx2 < 0 || nx2 >= SIZE || ny2 < 0 || ny2 >= SIZE || board[ny2][nx2] !== role) break;
+                count++; i++;
+            }
+            if (count >= 5) return true;
+        }
+        return false;
+    }
+    function evaluatePoint(x, y, role) {
+        var score = 0, dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+        for (var k = 0; k < 4; k++) {
+            var dx = dirs[k][0], dy = dirs[k][1], count = 1, emptyEnds = 0, i, j, nx, ny;
+            i = 1;
+            while (true) {
+                nx = x + dx * i; ny = y + dy * i;
+                if (nx < 0 || nx >= SIZE || ny < 0 || ny >= SIZE) break;
+                if (board[ny][nx] === role) count++;
+                else { if (board[ny][nx] === EMPTY) emptyEnds++; break; }
+                i++;
+            }
+            i = 1;
+            while (true) {
+                nx = x - dx * i; ny = y - dy * i;
+                if (nx < 0 || nx >= SIZE || ny < 0 || ny >= SIZE) break;
+                if (board[ny][nx] === role) count++;
+                else { if (board[ny][nx] === EMPTY) emptyEnds++; break; }
+                i++;
+            }
+            if (count >= 5) score += 100000;
+            else if (count === 4) score += emptyEnds === 2 ? 10000 : (emptyEnds === 1 ? 1000 : 0);
+            else if (count === 3) score += emptyEnds === 2 ? 1000 : (emptyEnds === 1 ? 100 : 0);
+            else if (count === 2) score += emptyEnds === 2 ? 100 : (emptyEnds === 1 ? 10 : 0);
+        }
+        return score;
+    }
+
+    /* ---------- 全屏对弈：把整个游戏容器搬进大弹窗，搬回来即还原 ---------- */
+    function setupFullscreen() {
+        var game = $('gq-game');
+        var home = game.parentNode;   /* 记住原位（面板内），收起时回这里 */
+        if (!home) return;
+        $('gq-full').addEventListener('click', function () {
+            if (!document.getElementById('gq-fs')) {
+                var fs = document.createElement('div');
+                fs.id = 'gq-fs';
+                fs.className = 'gq-fs';
+                fs.innerHTML = '<div class="gq-fs-card" style="position:relative">' +
+                    '<button class="gq-fs-exit" id="gq-fs-close" title="收起">✕</button>' +
+                    '<div id="gq-fs-slot"></div></div>';
+                document.body.appendChild(fs);
+                fs.addEventListener('click', function (e) { if (e.target === fs) window.gqExitFs(); });
+            }
+            $('gq-fs-slot').appendChild(game);
+            $('gq-fs').classList.remove('hidden');
+        });
+        window.gqExitFs = function () {
+            var fs = document.getElementById('gq-fs');
+            if (fs) fs.classList.add('hidden');
+            home.appendChild(game);   /* 搬回面板原位，局面保留 */
+        };
+        document.addEventListener('click', function (e) {
+            if (e.target && e.target.id === 'gq-fs-close') window.gqExitFs();
+        });
+    }
+
+    /* ---------- 胜负弹层 ---------- */
+    function setupOverlay() {
+        var ov = document.createElement('div');
+        ov.id = 'gq-overlay';
+        ov.className = 'gq-fs hidden';
+        ov.innerHTML = '<div class="gq-fs-card gq-result-card" style="position:relative;text-align:center">' +
+            '<div id="gq-winner-text" style="font-size:22px;font-weight:800;color:var(--accent-color);margin-bottom:14px">—</div>' +
+            '<button class="gq-act" id="gq-again" style="width:60%;margin:0 auto">再来一局</button></div>';
+        document.body.appendChild(ov);
+        ov.addEventListener('click', function (e) { if (e.target === ov) hideWinner(); });
+        $('gq-again').addEventListener('click', function () { hideWinner(); initGame(); });
+    }
+
+    /* ---------- 启动 ---------- */
+    function init() {
+        if (!ready()) { setTimeout(init, 100); return; }
+        panel = $('gq-panel');
+        injectMenuItem();
+        setupOverlay();
+        setupFullscreen();
+        initGame();
+        $('gq-undo').addEventListener('click', undoMove);
+        $('gq-reset').addEventListener('click', initGame);
+        $('gq-close').addEventListener('click', closePanel);
+        document.addEventListener('click', function (e) {
+            if (!isOpen()) return;
+            if (e.target.closest && (e.target.closest('#gq-panel') || e.target.closest('#gq-menu-item'))) return;
+            if (e.target.closest && (e.target.closest('#gq-fs') || e.target.closest('#gq-overlay'))) return;
+            closePanel();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && isOpen()) closePanel();
+        });
+        window.addEventListener('resize', function () { if (isOpen()) placePanel(); });
+    }
+    init();
+})();
+</script>

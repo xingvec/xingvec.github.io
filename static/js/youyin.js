@@ -184,33 +184,42 @@
         });
 
         /* ---------- 最小化 / 恢复 / 闲置全隐 ---------- */
-        /* 隐身后左下角留一块隐形感应区，鼠标停靠即唤出 */
-        var hotspot = document.createElement('div');
-        hotspot.id = 'yy-hotspot';
-        hotspot.title = '悠听';
-        document.body.appendChild(hotspot);
-
-        var IDLE_MS = 30000, idleTimer = null;
+        /* v3.2: 隐身后不再放遮挡元素，改用鼠标接近检测唤出（不影响页面点击） */
+        var IDLE_MS = 30000, idleTimer = null, probing = false;
+        function disarmProximity() {
+            if (probing) {
+                probing = false;
+                document.removeEventListener('mousemove', onProbe);
+                document.removeEventListener('pointerdown', onProbe);
+            }
+        }
+        function onProbe(e) {
+            /* 左下角感应带：横向 90px × 纵向 170px 内算"停靠" */
+            if (e.clientX <= 90 && (window.innerHeight - e.clientY) <= 170) {
+                root.classList.remove('yy-hidden');
+                disarmProximity();
+                armIdleHide();
+            }
+        }
+        function armProximity() {
+            if (!probing) {
+                probing = true;
+                document.addEventListener('mousemove', onProbe);
+                document.addEventListener('pointerdown', onProbe);
+            }
+        }
         function disarmIdleHide() {
             if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
-            hotspot.classList.remove('on');
+            disarmProximity();
         }
         function armIdleHide() {
             disarmIdleHide();
             if (!root.classList.contains('yy-mini')) return;   /* 展开模式永不隐藏 */
             idleTimer = setTimeout(function () {
                 root.classList.add('yy-hidden');
-                hotspot.classList.add('on');
+                armProximity();
             }, IDLE_MS);
         }
-        function revealFromHotspot() {
-            if (!hotspot.classList.contains('on')) return;
-            root.classList.remove('yy-hidden');
-            hotspot.classList.remove('on');
-            armIdleHide();
-        }
-        hotspot.addEventListener('mouseenter', revealFromHotspot);
-        hotspot.addEventListener('pointerdown', revealFromHotspot);
 
         document.getElementById('yy-btn-min').addEventListener('click', function () {
             root.classList.add('yy-mini');

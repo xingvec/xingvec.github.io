@@ -1,7 +1,7 @@
 /* ============================================================
    悠听 · 博客版 v3.1 样式
    白色卡片风 + 跟随博客淡青主题明暗自适应
-   v3.1: 上移避开暗色开关 / 默认迷你 / 闲置全隐 / 黑胶唱片美化
+   v3.2: 闲置全隐改鼠标接近检测，不再有遮挡元素 / v3.1 黑胶唱片美化
    ============================================================ */
 
 #yy-player {
@@ -36,18 +36,6 @@
     transform: translateX(-130%);
     pointer-events: none;
 }
-#yy-hotspot {
-    position: fixed;
-    left: 8px;
-    bottom: 74px;
-    width: 64px;
-    height: 88px;
-    z-index: 9998;
-    display: none;
-    cursor: pointer;
-    border-radius: 999px;
-}
-#yy-hotspot.on { display: block; }
 
 /* ---------- 暗色（博客 data-scheme 在 html 上）---------- */
 html[data-scheme="dark"] #yy-player {
