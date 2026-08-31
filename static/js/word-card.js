@@ -1,9 +1,12 @@
-/* 词卡·每日一词 v3.0 —— 右下角词典风磨砂卡片（样式大改版）
+/* 词卡·每日一词 v3.1 —— 右下角词典风磨砂卡片（难词重点词加权版）
  * 交互：页面加载后自动亮相约 4 秒（每个浏览器标签页仅一次），随后隐身；
  *       鼠标进入右下角感应区（或移到卡片上）淡入，离开淡出。
  *       坐标检测唤出，不用热区 div（会挡住角落点击，悠听 v3.2 的教训）。
- * 数据：/words/gaokao-3500.json（高考3668词，词频加权）。
- * 逻辑：今日词=本地日期确定性轮换；换一个=词频加权随机；撤销=回退上一词；
+ * 数据：/words/gaokao-3500.json（高考3668词）。
+ * 权重：难词重点词优先——建库词频权重 wt 越大越常用，按档位反压：
+ *       简单词（the/what/record 级）几乎不抽到，中低频课本重点词占绝大头；
+ *       今日词轮换池剔除超高频简单词；「换一个」避开最近看过的 12 个词。
+ * 逻辑：今日词=本地日期确定性轮换（全站同日同词）；撤销=回退上一词；
  *       跨页面导航用 sessionStorage 保持当前词。
  */
 (function () {
@@ -125,11 +128,37 @@
     /* ---------- 数据与状态 ---------- */
     var data = null, prefix = null, totalW = 0;
     var state = { i: -1, hist: [], day: -1 };
+    var dailyPool = null, dailyStep = 0;
+
+    /* 难词加权：建库时 wt=300/rank^0.6（越大越常用），按档位反压——
+     * 简单词压到极低，中低频课本重点词（写作词汇主力）抬到最高档。 */
+    function hardWt(wt) {
+        if (wt >= 100) return 0.6;   /* the/of/and 级超高频 */
+        if (wt >= 20) return 1.5;    /* 高频常用词 */
+        if (wt >= 6) return 4;       /* 中频词 */
+        if (wt >= 2) return 8;       /* 中低频重点词 */
+        return 12;                   /* 低频难词 */
+    }
 
     function dayNumber() {
         return Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 864e5);
     }
-    function todayIndex() { return (dayNumber() * 911) % data.length; }
+
+    /* 今日词轮换池：剔除 wt>=20 的超高频简单词，按与池长互质的素数步长确定性轮换 */
+    function buildDailyPool() {
+        dailyPool = [];
+        for (var k = 0; k < data.length; k++) if (data[k].wt < 20) dailyPool.push(k);
+        if (!dailyPool.length) { for (k = 0; k < data.length; k++) dailyPool.push(k); }
+        function gcd(a, b) { return b ? gcd(b, a % b) : a; }
+        for (var p = 911; ; p += 2) {
+            var prime = true;
+            for (var d = 3; d * d <= p; d += 2) if (p % d === 0) { prime = false; break; }
+            if (prime && gcd(p, dailyPool.length) === 1) { dailyStep = p; break; }
+        }
+    }
+    function todayIndex() {
+        return dailyPool[(dayNumber() * dailyStep) % dailyPool.length];
+    }
 
     function saveSession() {
         try { sessionStorage.setItem('wc-state', JSON.stringify(state)); } catch (e) {}
@@ -141,13 +170,25 @@
         } catch (e) {}
     }
 
-    function pickWeighted() {
-        var r = Math.random() * totalW, lo = 0, hi = prefix.length - 1;
-        while (lo < hi) {
-            var mid = (lo + hi) >> 1;
-            if (prefix[mid] <= r) lo = mid + 1; else hi = mid;
+    /* 最近看过的词（当前+撤销栈末12个），「换一个」尽量避开，防止反复出同一个词 */
+    function recentSet() {
+        var s = {};
+        if (state.i >= 0) s[state.i] = 1;
+        for (var k = Math.max(0, state.hist.length - 12); k < state.hist.length; k++) {
+            s[state.hist[k]] = 1;
         }
-        return lo === state.i ? (lo + 1) % data.length : lo;
+        return s;
+    }
+    function pickWeighted() {
+        var recent = recentSet();
+        for (var tries = 0; tries < 24; tries++) {
+            var r = Math.random() * totalW, lo = 0, hi = prefix.length - 1;
+            while (lo < hi) {
+                var mid = (lo + hi) >> 1;
+                if (prefix[mid] <= r) lo = mid + 1; else hi = mid;
+            }
+            if (!recent[lo] || tries === 23) return lo;
+        }
     }
 
     function render(idx, isToday) {
@@ -263,9 +304,10 @@
             data = arr;
             prefix = []; totalW = 0;
             for (var k = 0; k < data.length; k++) {
-                totalW += data[k].wt;
+                totalW += hardWt(data[k].wt);
                 prefix.push(totalW);
             }
+            buildDailyPool();
             if (state.i >= 0 && state.i < data.length && state.day === dayNumber()) {
                 render(state.i, state.i === todayIndex());
             } else {
@@ -278,4 +320,13 @@
             tr.innerHTML = '<div id="wc-tip">词库加载失败，稍后刷新页面试试</div>';
             flashOnce();
         });
+
+    /* 回归测试钩子（只读） */
+    window.__wcTest = {
+        get data() { return data; },
+        get dailyPool() { return dailyPool; },
+        hardWt: hardWt,
+        pickWeighted: pickWeighted,
+        todayIndex: todayIndex
+    };
 })();
