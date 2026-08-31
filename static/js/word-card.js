@@ -1,6 +1,7 @@
-/* 词卡·每日一词 v2.0 —— 右下角磨砂玻璃词卡
- * 交互：默认隐藏；鼠标进入右下角感应区（或移到卡片上）淡入，离开淡出。
- *       用 mousemove 坐标检测唤出，不用热区 div（会挡住角落点击，悠听 v3.2 的教训）。
+/* 词卡·每日一词 v3.0 —— 右下角词典风磨砂卡片（样式大改版）
+ * 交互：页面加载后自动亮相约 4 秒（每个浏览器标签页仅一次），随后隐身；
+ *       鼠标进入右下角感应区（或移到卡片上）淡入，离开淡出。
+ *       坐标检测唤出，不用热区 div（会挡住角落点击，悠听 v3.2 的教训）。
  * 数据：/words/gaokao-3500.json（高考3668词，词频加权）。
  * 逻辑：今日词=本地日期确定性轮换；换一个=词频加权随机；撤销=回退上一词；
  *       跨页面导航用 sessionStorage 保持当前词。
@@ -9,59 +10,89 @@
     'use strict';
     if (document.getElementById('wc-root')) return;
 
+    var ACCENT = '#0f8377';
     var CSS = [
-        '#wc-root{position:fixed;right:12px;bottom:12px;z-index:60;',
-            'width:min(300px,calc(100vw - 24px));',
-            'opacity:0;visibility:hidden;transform:translateY(10px);pointer-events:none;',
-            'transition:opacity .3s ease,transform .3s ease,visibility .3s;}',
+        '#wc-root{position:fixed;right:14px;bottom:14px;z-index:60;',
+            'width:min(320px,calc(100vw - 24px));',
+            'opacity:0;visibility:hidden;transform:translateY(12px);pointer-events:none;',
+            'transition:opacity .34s ease,transform .34s ease,visibility .34s;}',
         '#wc-root.wc-show{opacity:1;visibility:visible;transform:none;pointer-events:auto;}',
+        '#wc-root.wc-show #wc-card{animation:wcIn .46s cubic-bezier(.34,1.56,.64,1);}',
+        '@keyframes wcIn{from{opacity:0;transform:translateY(16px) scale(.94);}to{opacity:1;transform:none;}}',
+        '@media (prefers-reduced-motion: reduce){',
+            '#wc-root{transition:none;}#wc-root.wc-show #wc-card{animation:none;}}',
 
-        '#wc-card{background:rgba(255,255,255,.60);',
-            'backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);',
-            'border:1px solid rgba(255,255,255,.65);border-radius:16px;',
-            'box-shadow:0 10px 34px rgba(15,131,119,.18),0 2px 8px rgba(0,0,0,.05);',
-            'padding:13px 15px 12px;color:var(--body-text-color,#3b4a54);}',
-        'html[data-scheme="dark"] #wc-card{background:rgba(30,36,40,.62);',
-            'border-color:rgba(255,255,255,.10);',
-            'box-shadow:0 10px 34px rgba(0,0,0,.45);color:#c8d3d8;}',
+        /* 磨砂玻璃卡片 + 渐变描边（@supports 门控，不支持则退回普通边框） */
+        '#wc-card{position:relative;overflow:hidden;',
+            'background:linear-gradient(165deg,rgba(255,255,255,.78),rgba(255,255,255,.55));',
+            'backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6);',
+            'border:1px solid rgba(255,255,255,.6);border-radius:18px;',
+            'box-shadow:0 18px 44px -12px rgba(15,131,119,.28),0 4px 14px rgba(0,0,0,.06);',
+            'padding:15px 18px 13px;color:var(--body-text-color,#3b4a54);}',
+        '@supports ((-webkit-mask-composite:xor) or (mask-composite:exclude)){',
+            '#wc-card{border-color:transparent;}',
+            '#wc-card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;padding:1px;',
+                'background:linear-gradient(140deg,rgba(255,255,255,.95),rgba(255,255,255,.25) 45%,rgba(15,131,119,.4));',
+                '-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;',
+                'mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude;}}',
+        'html[data-scheme="dark"] #wc-card{',
+            'background:linear-gradient(165deg,rgba(33,40,44,.74),rgba(25,31,34,.62));',
+            'border-color:rgba(255,255,255,.1);',
+            'box-shadow:0 18px 44px -12px rgba(0,0,0,.55);color:#c8d3d8;}',
+        '@supports ((-webkit-mask-composite:xor) or (mask-composite:exclude)){',
+            'html[data-scheme="dark"] #wc-card::after{',
+                'background:linear-gradient(140deg,rgba(255,255,255,.2),rgba(255,255,255,.06) 45%,rgba(87,205,189,.4));}}',
         '@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){',
             '#wc-card{background:var(--card-background,#fff);}}',
 
+        '.wc-glow{position:absolute;top:-46px;right:-46px;width:130px;height:130px;border-radius:50%;',
+            'background:radial-gradient(circle,rgba(15,131,119,.14),transparent 70%);pointer-events:none;}',
+        'html[data-scheme="dark"] .wc-glow{background:radial-gradient(circle,rgba(87,205,189,.12),transparent 70%);}',
+        '.wc-tick{width:30px;height:3px;border-radius:2px;margin-bottom:8px;',
+            'background:linear-gradient(90deg,#0f8377,#57cdbd);}',
+        'html[data-scheme="dark"] .wc-tick{background:linear-gradient(90deg,#3cb8a7,#7fd8cc);}',
+
         '#wc-head{display:flex;align-items:baseline;gap:8px;min-width:0;}',
-        '#wc-w{font-size:22px;font-weight:700;color:var(--accent-color,#0f8377);',
-            'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
+        '#wc-w{font-family:Georgia,"Times New Roman",serif;font-size:23px;font-weight:700;',
+            'color:#0e7c70;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
             'flex:0 0 auto;max-width:58%;min-width:0;}',
-        '#wc-tag{flex-shrink:0;font-size:10.5px;line-height:1;padding:3px 6px;border-radius:6px;',
-            'color:#fff;background:var(--accent-color,#0f8377);opacity:.85;white-space:nowrap;}',
+        'html[data-scheme="dark"] #wc-w{color:#6fd3c4;}',
+        '#wc-tag{flex-shrink:0;font-size:10.5px;line-height:1;padding:3px 7px;border-radius:999px;',
+            'color:#fff;background:linear-gradient(135deg,#119a8b,#0b6b5f);white-space:nowrap;}',
         '#wc-ipa{flex:1 1 0;min-width:0;text-align:right;font-size:12px;',
-            'color:var(--body-text-color,#3b4a54);opacity:.62;',
+            'color:var(--body-text-color,#3b4a54);opacity:.6;',
             'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
 
-        '#wc-tr{margin-top:7px;}',
-        '.wc-line{display:flex;gap:6px;font-size:13px;line-height:1.55;margin-top:3px;min-width:0;}',
-        '.wc-pos{flex-shrink:0;font-size:12px;font-weight:600;color:var(--accent-color,#0f8377);',
-            'padding-top:1px;white-space:nowrap;}',
+        '#wc-tr{margin-top:8px;}',
+        '#wc-loading{font-size:12.5px;opacity:.55;margin-top:4px;}',
+        '.wc-line{display:flex;gap:7px;font-size:13px;line-height:1.55;margin-top:3px;min-width:0;}',
+        '.wc-pos{flex-shrink:0;font-size:12px;font-weight:600;color:#0f8377;padding-top:1px;',
+            'white-space:nowrap;font-family:Georgia,serif;}',
+        'html[data-scheme="dark"] .wc-pos{color:#57cdbd;}',
         '.wc-cn{flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;',
             'overflow:hidden;overflow-wrap:break-word;}',
 
-        '#wc-sen{margin-top:8px;padding:7px 10px;border-left:3px solid var(--accent-color,#0f8377);',
-            'background:rgba(15,131,119,.07);border-radius:0 10px 10px 0;}',
-        'html[data-scheme="dark"] #wc-sen{background:rgba(255,255,255,.06);}',
-        '#wc-en{font-style:italic;font-size:12.5px;line-height:1.5;',
-            'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;',
-            'overflow-wrap:break-word;}',
+        '#wc-sen{position:relative;margin-top:10px;padding:10px 12px 9px 27px;',
+            'background:linear-gradient(135deg,rgba(15,131,119,.09),rgba(15,131,119,.03));border-radius:12px;}',
+        'html[data-scheme="dark"] #wc-sen{background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.03));}',
+        '#wc-sen::before{content:"\\201C";position:absolute;left:9px;top:3px;',
+            'font:700 26px/1 Georgia,serif;color:' + ACCENT + ';opacity:.4;}',
+        'html[data-scheme="dark"] #wc-sen::before{color:#57cdbd;}',
+        '#wc-en{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-size:13px;line-height:1.5;',
+            'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:break-word;}',
         '#wc-cnx{font-size:12px;opacity:.72;line-height:1.5;margin-top:2px;',
             'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}',
 
-        '#wc-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;}',
-        '#wc-btns button{font-family:inherit;font-size:12px;padding:5px 13px;border-radius:999px;',
-            'cursor:pointer;transition:opacity .15s,transform .15s;border:1px solid transparent;}',
-        '#wc-btns button:hover{transform:translateY(-1px);}',
-        '#wc-undo{background:transparent;color:var(--body-text-color,#3b4a54);opacity:.75;',
-            'border-color:currentColor!important;}',
+        '#wc-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:11px;}',
+        '#wc-btns button{font-family:inherit;font-size:12px;padding:5px 14px;border-radius:999px;',
+            'cursor:pointer;transition:transform .16s,box-shadow .16s,opacity .16s;border:1px solid transparent;}',
+        '#wc-next{background:linear-gradient(135deg,#119a8b,#0b6b5f);color:#fff;',
+            'box-shadow:0 4px 12px rgba(15,131,119,.32);}',
+        '#wc-next:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(15,131,119,.42);}',
+        '#wc-undo{background:transparent;color:var(--body-text-color,#3b4a54);opacity:.7;border-color:currentColor;}',
         'html[data-scheme="dark"] #wc-undo{color:#c8d3d8;}',
-        '#wc-next{background:var(--accent-color,#0f8377);color:#fff;}',
-        '#wc-btns button:disabled{opacity:.35;cursor:default;transform:none;}',
+        '#wc-undo:hover{opacity:1;transform:translateY(-1px);}',
+        '#wc-btns button:disabled{opacity:.32;cursor:default;transform:none;box-shadow:none;}',
         '#wc-tip{font-size:12px;opacity:.7;margin-top:6px;}'
     ].join('');
 
@@ -73,12 +104,14 @@
     root.id = 'wc-root';
     root.innerHTML =
         '<div id="wc-card">' +
+            '<div class="wc-glow"></div>' +
+            '<div class="wc-tick"></div>' +
             '<div id="wc-head">' +
                 '<span id="wc-w"></span>' +
                 '<span id="wc-tag" style="display:none">今日</span>' +
                 '<span id="wc-ipa"></span>' +
             '</div>' +
-            '<div id="wc-tr"></div>' +
+            '<div id="wc-tr"><div id="wc-loading">加载词库…</div></div>' +
             '<div id="wc-sen" style="display:none"><div id="wc-en"></div><div id="wc-cnx"></div></div>' +
             '<div id="wc-btns">' +
                 '<button id="wc-undo" type="button">↶ 撤销</button>' +
@@ -117,13 +150,11 @@
         return lo === state.i ? (lo + 1) % data.length : lo;
     }
 
-    function esc(s) {
-        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
     function render(idx, isToday) {
         var d = data[idx];
         state.i = idx;
+        var ld = $('wc-loading');
+        if (ld) ld.remove();
         $('wc-w').textContent = d.w;
         $('wc-w').title = d.w;
         $('wc-tag').style.display = isToday ? '' : 'none';
@@ -178,9 +209,9 @@
         render(state.hist.pop(), false);
     });
 
-    /* ---------- 悬停唤出（坐标检测，不用热区 div） ---------- */
-    var ZONE_W = 170, ZONE_H = 240, HIDE_DELAY = 420;
-    var hideTimer = null, shown = false;
+    /* ---------- 显隐：加载亮相 + 悬停唤出（坐标检测） ---------- */
+    var ZONE_W = 200, ZONE_H = 260, HIDE_DELAY = 420, FLASH_MS = 4200;
+    var hideTimer = null, flashTimer = null, shown = false;
 
     function inZone(x, y) {
         return x > window.innerWidth - ZONE_W && y > window.innerHeight - ZONE_H;
@@ -192,11 +223,21 @@
     }
     function showCard() {
         if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+        if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
         if (!shown) { shown = true; root.classList.add('wc-show'); }
     }
     function hideCard() {
+        if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
         shown = false;
         root.classList.remove('wc-show');
+    }
+    function flashOnce() {
+        try {
+            if (sessionStorage.getItem('wc-flash')) return;
+            sessionStorage.setItem('wc-flash', '1');
+        } catch (e) { return; }
+        showCard();
+        flashTimer = setTimeout(hideCard, FLASH_MS);
     }
     function track(x, y) {
         if (inZone(x, y) || overCard(x, y)) showCard();
@@ -230,8 +271,11 @@
             } else {
                 showToday();
             }
+            flashOnce();
         })
         .catch(function () {
-            $('wc-tr').innerHTML = '<div id="wc-tip">词库加载失败，稍后刷新页面试试</div>';
+            var tr = $('wc-tr');
+            tr.innerHTML = '<div id="wc-tip">词库加载失败，稍后刷新页面试试</div>';
+            flashOnce();
         });
 })();
